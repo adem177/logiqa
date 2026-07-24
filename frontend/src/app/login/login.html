@@ -1,0 +1,47 @@
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="brand">
+      <h3>LOGIQA</h3>
+      <span class="brand-tag">Plateforme E-Learning</span>
+    </div>
+
+    <h1>Se connecter</h1>
+    <div class="error-msg" *ngIf="errorVisible">
+      ⚠️ {{ errorMessage }}
+    </div>
+
+    <form (ngSubmit)="validerConnexion()">
+      <div class="input-group">
+        <label>Login</label>
+        <input type="text" [(ngModel)]="login" name="login" placeholder="Votre identifiant" required />
+      </div>
+
+      <div class="input-group">
+        <label>Mot de passe</label>
+        <input type="password" [(ngModel)]="password" name="password" placeholder="••••••••" required />
+      </div>
+
+      <div class="input-group captcha-group">
+        <label>Code de vérification</label>
+        <div class="captcha-row">
+          <input type="text" [(ngModel)]="captchaInput" name="captchaInput" placeholder="Retapez le code" required />
+          <div class="code-box" (click)="refreshCaptcha()" title="Cliquer pour rafraîchir">
+            {{ captchaCode }}
+          </div>
+        </div>
+        <button type="button" class="refresh-btn" (click)="refreshCaptcha()">
+          🔄 Rafraîchir le code
+        </button>
+      </div>
+
+      <div class="actions">
+        <a href="#" class="forgot-link">Mot de passe oublié ?</a>
+        <button type="submit" class="btn-login">Se connecter</button>
+      </div>
+    </form>
+
+    <p class="register-link">
+      Pas encore de compte ? <a routerLink="/inscription">S'inscrire</a>
+    </p>
+  </div>
+</div>
