@@ -1,0 +1,52 @@
+# ===== Environment / secrets =====
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# ===== Python / backend =====
+backend/venv/
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log
+
+# ===== Node / Angular / frontend =====
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/install-log.txt
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ===== IDE / editors =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== Misc =====
+*.local
+.cache/

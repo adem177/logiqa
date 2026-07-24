@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from functools import wraps
 from db import get_connection
+from init_db import init_database
 
 load_dotenv()
 
@@ -229,5 +230,7 @@ def me():
 
 
 if __name__ == '__main__':
+    if not init_database():
+        raise SystemExit(1)
     port = int(os.getenv('PORT', 3000))
     app.run(debug=True, port=port)
