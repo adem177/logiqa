@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 
-type Role = 'etudiant' | 'enseignant' | 'administration';
+type Role = 'etudiant' | 'enseignant';
 
 @Component({
   selector: 'app-inscription',
@@ -73,11 +73,22 @@ export class InscriptionComponent {
       : '';
   }
 
+  // ✅ CORRECTION : Validation mot de passe 8 caractères + lettre + chiffre
   validatePassword() {
     this.touched.password = true;
-    this.fieldErrors.password = this.password.length < 6
-      ? 'Le mot de passe doit contenir au moins 6 caractères.'
-      : '';
+    const hasLetter = /[A-Za-z]/.test(this.password);
+    const hasDigit = /\d/.test(this.password);
+    
+    if (this.password.length < 8) {
+      this.fieldErrors.password = 'Le mot de passe doit contenir au moins 8 caractères.';
+    } else if (!hasLetter) {
+      this.fieldErrors.password = 'Le mot de passe doit contenir au moins une lettre.';
+    } else if (!hasDigit) {
+      this.fieldErrors.password = 'Le mot de passe doit contenir au moins un chiffre.';
+    } else {
+      this.fieldErrors.password = '';
+    }
+    
     if (this.touched.confirmPassword) {
       this.validateConfirmPassword();
     }
@@ -90,12 +101,18 @@ export class InscriptionComponent {
       : '';
   }
 
+  // ✅ CORRECTION : isFormValid avec 8 caractères + lettre + chiffre
   isFormValid = computed(() => {
+    const hasLetter = /[A-Za-z]/.test(this.password);
+    const hasDigit = /\d/.test(this.password);
+    
     return (
       this.nom.trim().length >= 2 &&
       this.prenom.trim().length >= 2 &&
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email) &&
-      this.password.length >= 6 &&
+      this.password.length >= 8 &&    // ✅ 8 caractères minimum
+      hasLetter &&                    // ✅ Au moins une lettre
+      hasDigit &&                     // ✅ Au moins un chiffre
       this.confirmPassword === this.password &&
       this.acceptTerms
     );
@@ -128,8 +145,17 @@ export class InscriptionComponent {
       return;
     }
 
-    if (this.password.length < 6) {
-      this.showError('Le mot de passe doit contenir au moins 6 caractères.');
+    // ✅ CORRECTION : 8 caractères minimum
+    if (this.password.length < 8) {
+      this.showError('Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+
+    // ✅ CORRECTION : Vérifier lettre et chiffre
+    const hasLetter = /[A-Za-z]/.test(this.password);
+    const hasDigit = /\d/.test(this.password);
+    if (!hasLetter || !hasDigit) {
+      this.showError('Le mot de passe doit contenir au moins une lettre et un chiffre.');
       return;
     }
 

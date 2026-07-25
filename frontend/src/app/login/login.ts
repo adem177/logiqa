@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 
 @Component({
@@ -11,14 +12,21 @@ import { Router, RouterLink } from '@angular/router';
   styleUrls: ['./login.css']
 })
 export class LoginComponent {
+  // Étape 1 : identifiants
   login: string = '';
   password: string = '';
   captchaInput: string = '';
   captchaCode: string = '';
+
+  // Étape 2 : code OTP
+  otpStep = false;
+  otpCode = '';
+  pendingUserId: number | null = null;
+
   errorMessage: string = '';
   errorVisible: boolean = false;
 
-  constructor(private router: Router) {
+  constructor(private http: HttpClient, private router: Router) {
     this.refreshCaptcha();
   }
 
@@ -31,27 +39,53 @@ export class LoginComponent {
     this.captchaCode = result;
   }
 
-  validerConnexion(): boolean {
+  validerConnexion(): void {
     if (this.captchaInput !== this.captchaCode) {
       this.errorMessage = 'Code de vérification incorrect. Veuillez réessayer.';
       this.errorVisible = true;
       this.refreshCaptcha();
       this.captchaInput = '';
-      return false;
+      return;
     }
 
     if (!this.login || !this.password) {
       this.errorMessage = 'Veuillez remplir tous les champs.';
       this.errorVisible = true;
-      return false;
+      return;
     }
 
-    // TODO : remplacer par un vrai appel API d'authentification
-    console.log('Connexion réussie pour:', this.login);
-    this.errorVisible = false;
+    this.http.post('http://localhost:3000/api/login', {
+      email: this.login,
+      password: this.password
+    }).subscribe({
+      next: (response: any) => {
+        this.pendingUserId = response.user_id;
+        this.otpStep = true;
+        this.errorVisible = false;
+      },
+      error: (err) => {
+        this.errorMessage = err.error?.error || 'Email ou mot de passe incorrect.';
+        this.errorVisible = true;
+        this.refreshCaptcha();
+        this.captchaInput = '';
+      }
+    });
+  }
 
-    // Redirection vers le tableau de bord
-    this.router.navigate(['/dashboard']);
-    return true;
+  validerOtp(): void {
+    this.http.post('http://localhost:3000/api/verify-otp', {
+      user_id: this.pendingUserId,
+      code: this.otpCode
+    }).subscribe({
+      next: (response: any) => {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        this.errorMessage = err.error?.error || 'Code incorrect.';
+        this.errorVisible = true;
+      }
+    });
   }
 }

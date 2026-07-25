@@ -11,7 +11,6 @@ DB_PASSWORD = os.getenv('DB_PASSWORD', '')
 DB_NAME = os.getenv('DB_NAME', 'logiqa')
 DB_PORT = int(os.getenv('DB_PORT', 3306))
 
-# Default admin seeded once at DB init (not creatable via /api/register)
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@logiqa.local')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'Admin123!')
 ADMIN_NOM = os.getenv('ADMIN_NOM', 'Admin')
@@ -56,30 +55,40 @@ def init_database():
         )
         cursor.execute(f"USE `{DB_NAME}`")
 
+        # 🔴 SUPPRIMER les anciennes tables si elles existent (pour recréer proprement)
+        cursor.execute("DROP TABLE IF EXISTS sessions")
+        cursor.execute("DROP TABLE IF EXISTS users")
+
+        # 🔴 RECRÉER avec nom ET prenom (pas name)
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+            CREATE TABLE users (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 nom VARCHAR(100) NOT NULL,
                 prenom VARCHAR(100) NOT NULL,
-                email VARCHAR(255) NOT NULL UNIQUE,
+                email VARCHAR(150) NOT NULL UNIQUE,
                 password VARCHAR(255) NOT NULL,
                 telephone VARCHAR(50) NULL,
-                role VARCHAR(50) NOT NULL DEFAULT 'etudiant',
-                last_login_at DATETIME NULL,
-                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                role ENUM('admin','etudiant','enseignant') NOT NULL DEFAULT 'etudiant',
+                email_verified_at TIMESTAMP NULL,
+                status TINYINT(1) NOT NULL DEFAULT 1,
+                last_login_at TIMESTAMP NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )
         """)
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS sessions (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                jti VARCHAR(255) NOT NULL UNIQUE,
+            CREATE TABLE sessions (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                jti VARCHAR(100) NOT NULL UNIQUE,
                 token_hash VARCHAR(255) NOT NULL,
-                expires_at DATETIME NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
                 revoked BOOLEAN NOT NULL DEFAULT FALSE,
-                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_jti (jti),
+                INDEX idx_user_id (user_id)
             )
         """)
 

@@ -10,7 +10,8 @@
       ⚠️ {{ errorMessage }}
     </div>
 
-    <form (ngSubmit)="validerConnexion()">
+    <!-- Étape 1 : identifiants + captcha -->
+    <form (ngSubmit)="validerConnexion()" *ngIf="!otpStep">
       <div class="input-group">
         <label>Login</label>
         <input type="text" [(ngModel)]="login" name="login" placeholder="Votre identifiant" required />
@@ -40,7 +41,29 @@
       </div>
     </form>
 
-    <p class="register-link">
+    <!-- Étape 2 : code OTP envoyé par email -->
+    <div *ngIf="otpStep">
+      <p class="subtitle">Un code de vérification a été envoyé à votre email.</p>
+
+      <div class="input-group">
+        <label>Code de vérification</label>
+        <input
+          type="text"
+          [(ngModel)]="otpCode"
+          name="otpCode"
+          placeholder="123456"
+          maxlength="6"
+        />
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn-login" (click)="validerOtp()">
+          Vérifier le code
+        </button>
+      </div>
+    </div>
+
+    <p class="register-link" *ngIf="!otpStep">
       Pas encore de compte ? <a routerLink="/inscription">S'inscrire</a>
     </p>
   </div>

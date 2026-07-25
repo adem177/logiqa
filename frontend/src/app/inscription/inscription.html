@@ -16,10 +16,6 @@
       <button type="button" [class.active]="role() === 'enseignant'" (click)="setRole('enseignant')">
         Enseignant
       </button>
-      <span class="sep">/</span>
-      <button type="button" [class.active]="role() === 'administration'" (click)="setRole('administration')">
-        Administration
-      </button>
     </div>
 
     <div class="error-msg" *ngIf="errorVisible">
