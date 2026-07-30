@@ -1,0 +1,80 @@
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-icon">🎓</div>
+    LOGIQA
+  </div>
+</header>
+
+<main>
+  <div class="top-row">
+    <h1>Cours</h1>
+    <button class="cta-btn" (click)="openCreateForm()">+ Ajouter un cours</button>
+  </div>
+
+  <div class="error-banner" *ngIf="errorMessage">
+    {{ errorMessage }}
+    <button class="close-btn" (click)="errorMessage = ''">✕</button>
+  </div>
+
+  <!-- Formulaire création / édition -->
+  <div class="form-panel" *ngIf="showForm">
+    <h2>{{ isEditMode ? 'Modifier le cours' : 'Nouveau cours' }}</h2>
+
+    <div class="form-grid">
+      <label>
+        Titre
+        <input type="text" [(ngModel)]="formModel.titre" placeholder="Ex: Introduction à Angular">
+      </label>
+
+      <label>
+        Catégorie
+        <input type="text" [(ngModel)]="formModel.categorie" placeholder="Ex: Développement web">
+      </label>
+
+      <label>
+        Niveau
+        <select [(ngModel)]="formModel.niveau">
+          <option value="Débutant">Débutant</option>
+          <option value="Intermédiaire">Intermédiaire</option>
+          <option value="Avancé">Avancé</option>
+        </select>
+      </label>
+
+      <label class="full-width">
+        Description
+        <textarea rows="3" [(ngModel)]="formModel.description" placeholder="Décris le contenu du cours"></textarea>
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-secondary" (click)="cancelForm()">Annuler</button>
+      <button class="cta-btn" (click)="submitForm()">{{ isEditMode ? 'Enregistrer' : 'Créer' }}</button>
+    </div>
+  </div>
+
+  <!-- Chargement -->
+  <div class="loading" *ngIf="loading">Chargement des cours...</div>
+
+  <!-- Liste des cours -->
+  <div class="cours-grid" *ngIf="!loading && coursList.length">
+    <div class="cours-card" *ngFor="let cours of coursList">
+      <div class="cours-badge">{{ cours.niveau }}</div>
+      <h3>{{ cours.titre }}</h3>
+      <p class="cours-categorie">{{ cours.categorie }}</p>
+      <p class="cours-desc">{{ cours.description }}</p>
+
+      <div class="cours-actions">
+        <button class="btn-edit" (click)="openEditForm(cours)">Modifier</button>
+        <button class="btn-delete" (click)="deleteCours(cours)">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- État vide -->
+  <div class="empty-state" *ngIf="!loading && !coursList.length">
+    <div class="empty-emoji">📚</div>
+    <div class="empty-title">Aucun cours disponible</div>
+    <div class="empty-text">Commence par ajouter ton premier cours.</div>
+    <button class="cta-btn" (click)="openCreateForm()">Ajouter un cours</button>
+  </div>
+</main>

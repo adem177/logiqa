@@ -37,7 +37,9 @@
 
       <div class="actions">
         <a href="#" class="forgot-link">Mot de passe oublié ?</a>
-        <button type="submit" class="btn-login">Se connecter</button>
+        <button type="submit" class="btn-login" [disabled]="isSubmitting">
+          {{ isSubmitting ? 'Envoi du code…' : 'Se connecter' }}
+        </button>
       </div>
     </form>
 
@@ -53,12 +55,13 @@
           name="otpCode"
           placeholder="123456"
           maxlength="6"
+          [disabled]="isVerifying"
         />
       </div>
 
       <div class="actions">
-        <button type="button" class="btn-login" (click)="validerOtp()">
-          Vérifier le code
+        <button type="button" class="btn-login" (click)="validerOtp()" [disabled]="isVerifying">
+          {{ isVerifying ? 'Vérification…' : 'Vérifier le code' }}
         </button>
       </div>
     </div>

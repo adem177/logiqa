@@ -1,0 +1,87 @@
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-icon">🎓</div>
+    LOGIQA
+    <span class="role-badge">ESPACE ENSEIGNANT</span>
+  </div>
+  <div class="home-btn">⌂</div>
+</header>
+
+<main>
+  <div class="top-row">
+    <div>
+      <div class="welcome">Bienvenue professeur {{ teacherName }} 👨‍🏫</div>
+      <h1>Votre tableau de bord</h1>
+    </div>
+
+    <div class="progress-widget">
+      <div class="progress-ring"
+           [style.background]="'conic-gradient(var(--blue) ' + progressStrokeDeg + 'deg, #e5e9f0 0deg)'">
+        <span>{{ completionRate }}%</span>
+      </div>
+      <div class="progress-label">Taux de<br>complétion des cours</div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card" *ngFor="let stat of stats">
+      <div class="stat-icon" [ngClass]="stat.iconClass">{{ stat.icon }}</div>
+      <div>
+        <div class="stat-value">{{ stat.value }}</div>
+        <div class="stat-title">{{ stat.title }}</div>
+        <div class="stat-sub" [class.muted]="stat.subMuted">{{ stat.sub }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Mes cours</div>
+        <a href="#" class="link-btn" *ngIf="courses.length">Voir tout</a>
+      </div>
+
+      <!-- État vide -->
+      <div class="empty-state" *ngIf="!courses.length">
+        <div class="empty-emoji">📚</div>
+        <div class="empty-title">Aucun cours publié</div>
+        <div class="empty-text">
+          Partagez votre savoir-faire et créez votre première formation dès aujourd'hui.
+        </div>
+        <button class="cta-btn" (click)="onCreateCourse()">Créer un cours</button>
+      </div>
+
+      <!-- Liste des cours une fois qu'il y en a -->
+      <div class="course-list" *ngIf="courses.length">
+        <div class="course-row" *ngFor="let course of courses">
+          <img [src]="course.thumbnail" [alt]="course.title" class="course-thumb">
+          <div>
+            <div class="course-title">{{ course.title }}</div>
+            <div class="course-meta">{{ course.studentsCount }} étudiant(s)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Activité récente</div>
+      </div>
+
+      <div class="empty-state activity-empty" *ngIf="!activities.length">
+        <div class="empty-emoji">🕊️</div>
+        <div class="empty-title small">Aucune activité pour l'instant.</div>
+        <div class="empty-text no-margin">
+          Elle apparaîtra ici dès que vos étudiants commenceront à interagir avec vos cours.
+        </div>
+      </div>
+
+      <ul class="activity-list" *ngIf="activities.length">
+        <li *ngFor="let item of activities">
+          <span class="activity-text">{{ item.text }}</span>
+          <span class="activity-date">{{ item.date }}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</main>

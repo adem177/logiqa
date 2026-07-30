@@ -1,4 +1,4 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -14,8 +14,10 @@ type Role = 'etudiant' | 'enseignant';
   styleUrls: ['./inscription.css']
 })
 export class InscriptionComponent {
+  // Rôle
   role = signal<Role>('etudiant');
 
+  // Champs
   nom = '';
   prenom = '';
   email = '';
@@ -24,11 +26,14 @@ export class InscriptionComponent {
   confirmPassword = '';
   acceptTerms = false;
 
+  // États
   errorVisible = false;
   errorMessage = '';
   successVisible = false;
+  isSubmitting = false;
+  showPassword = false;
 
-  // ===== Validation en temps réel =====
+  // Validation
   fieldErrors = {
     nom: '',
     prenom: '',
@@ -47,10 +52,43 @@ export class InscriptionComponent {
 
   constructor(private http: HttpClient, private router: Router) {}
 
+  // --- Rôle ---
   setRole(r: Role) {
     this.role.set(r);
   }
 
+  // --- Formatage téléphone ---
+  formatPhoneNumber() {
+    let cleaned = this.telephone.replace(/\D/g, '');
+    if (cleaned.length > 8) {
+      cleaned = cleaned.slice(0, 8);
+    }
+    if (cleaned.length > 2) {
+      cleaned = cleaned.slice(0, 2) + ' ' + cleaned.slice(2);
+    }
+    if (cleaned.length > 6) {
+      cleaned = cleaned.slice(0, 6) + ' ' + cleaned.slice(6);
+    }
+    this.telephone = cleaned;
+  }
+
+  // --- Force du mot de passe ---
+  getPasswordStrength(): number {
+    let score = 0;
+    if (this.password.length >= 8) score += 33;
+    if (/[A-Za-z]/.test(this.password)) score += 33;
+    if (/\d/.test(this.password)) score += 34;
+    return Math.min(score, 100);
+  }
+
+  getPasswordStrengthText(): string {
+    const strength = this.getPasswordStrength();
+    if (strength <= 33) return 'Faible';
+    if (strength <= 66) return 'Moyen';
+    return 'Fort';
+  }
+
+  // --- Validations ---
   validateNom() {
     this.touched.nom = true;
     this.fieldErrors.nom = this.nom.trim().length < 2
@@ -73,12 +111,11 @@ export class InscriptionComponent {
       : '';
   }
 
-  // ✅ CORRECTION : Validation mot de passe 8 caractères + lettre + chiffre
   validatePassword() {
     this.touched.password = true;
     const hasLetter = /[A-Za-z]/.test(this.password);
     const hasDigit = /\d/.test(this.password);
-    
+
     if (this.password.length < 8) {
       this.fieldErrors.password = 'Le mot de passe doit contenir au moins 8 caractères.';
     } else if (!hasLetter) {
@@ -88,7 +125,7 @@ export class InscriptionComponent {
     } else {
       this.fieldErrors.password = '';
     }
-    
+
     if (this.touched.confirmPassword) {
       this.validateConfirmPassword();
     }
@@ -101,31 +138,34 @@ export class InscriptionComponent {
       : '';
   }
 
-  // ✅ CORRECTION : isFormValid avec 8 caractères + lettre + chiffre
-  isFormValid = computed(() => {
+  // ─── VALIDATION GLOBALE : méthode normale (PAS computed) ───
+  isFormValid(): boolean {
     const hasLetter = /[A-Za-z]/.test(this.password);
     const hasDigit = /\d/.test(this.password);
-    
+
     return (
       this.nom.trim().length >= 2 &&
       this.prenom.trim().length >= 2 &&
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email) &&
-      this.password.length >= 8 &&    // ✅ 8 caractères minimum
-      hasLetter &&                    // ✅ Au moins une lettre
-      hasDigit &&                     // ✅ Au moins un chiffre
+      this.password.length >= 8 &&
+      hasLetter &&
+      hasDigit &&
       this.confirmPassword === this.password &&
+      this.confirmPassword !== '' &&   // ← évite que '' === '' soit valide
       this.acceptTerms
     );
-  });
+  }
 
+  // --- Erreurs ---
   private showError(msg: string) {
     this.errorMessage = msg;
     this.errorVisible = true;
     this.successVisible = false;
   }
 
+  // --- Inscription ---
   validerInscription() {
-    // Force l'affichage de toutes les erreurs si soumis directement
+    // Force les validations visuelles
     this.validateNom();
     this.validatePrenom();
     this.validateEmail();
@@ -134,58 +174,37 @@ export class InscriptionComponent {
 
     this.errorVisible = false;
 
-    if (!this.nom || !this.prenom || !this.email || !this.password) {
-      this.showError('Veuillez remplir tous les champs obligatoires.');
+    // Vérifications finales
+    if (!this.isFormValid()) {
+      this.showError('Veuillez remplir correctement tous les champs obligatoires.');
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(this.email)) {
-      this.showError('Adresse email invalide.');
-      return;
-    }
+    this.isSubmitting = true;
 
-    // ✅ CORRECTION : 8 caractères minimum
-    if (this.password.length < 8) {
-      this.showError('Le mot de passe doit contenir au moins 8 caractères.');
-      return;
-    }
-
-    // ✅ CORRECTION : Vérifier lettre et chiffre
-    const hasLetter = /[A-Za-z]/.test(this.password);
-    const hasDigit = /\d/.test(this.password);
-    if (!hasLetter || !hasDigit) {
-      this.showError('Le mot de passe doit contenir au moins une lettre et un chiffre.');
-      return;
-    }
-
-    if (this.password !== this.confirmPassword) {
-      this.showError('Les mots de passe ne correspondent pas.');
-      return;
-    }
-
-    if (!this.acceptTerms) {
-      this.showError("Veuillez accepter les conditions d'utilisation.");
-      return;
-    }
-
-    this.http.post('http://localhost:3000/api/register', {
-      nom: this.nom,
-      prenom: this.prenom,
-      email: this.email,
+    // Envoi des données
+    const formData = {
+      nom: this.nom.trim(),
+      prenom: this.prenom.trim(),
+      email: this.email.toLowerCase().trim(),
       password: this.password,
-      telephone: this.telephone,
+      telephone: this.telephone ? '+216' + this.telephone.replace(/\s/g, '') : '',
       role: this.role()
-    }).subscribe({
-      next: () => {
-        this.successVisible = true;
-        setTimeout(() => {
-          this.router.navigate(['/login']);
-        }, 1500);
-      },
-      error: (err) => {
-        this.showError(err.error?.error || 'Erreur lors de la création du compte.');
-      }
-    });
+    };
+
+    this.http.post('http://localhost:3000/api/register', formData)
+      .subscribe({
+        next: () => {
+          this.successVisible = true;
+          this.isSubmitting = false;
+          setTimeout(() => {
+            this.router.navigate(['/login']);
+          }, 1500);
+        },
+        error: (err) => {
+          this.showError(err.error?.error || 'Erreur lors de la création du compte.');
+          this.isSubmitting = false;
+        }
+      });
   }
 }

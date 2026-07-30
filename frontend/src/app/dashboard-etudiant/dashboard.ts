@@ -2,7 +2,7 @@ import { Component, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
-interface Course {
+interface Cours {
   id: string;
   title: string;
   category: string;
@@ -25,7 +25,7 @@ interface Activity {
   templateUrl: './dashboard.html',      // ← vérifie ce nom aussi
   styleUrls: ['./dashboard.css']        // ← doit matcher le vrai fichier
 })
-export class DashboardComponent {
+export class Dashboard {
   userName = signal('Adem');
 
   // Nouveau compte : tout démarre à zéro
@@ -36,7 +36,7 @@ export class DashboardComponent {
     { label: 'Score moyen', value: 0, icon: '📊', trend: '—', suffix: '%' },
   ]);
 
-  courses = signal<Course[]>([]);
+  courses = signal<Cours[]>([]);
   activities = signal<Activity[]>([]);
 
   overallProgress = computed(() => {

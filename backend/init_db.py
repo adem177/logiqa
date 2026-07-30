@@ -37,7 +37,9 @@ def seed_admin(cursor, connection):
 
 
 def init_database():
-    """Create the database, tables, and default admin if they do not already exist."""
+    """Create the database, tables, and default admin if they do not already exist.
+    IMPORTANT: this function is idempotent and non-destructive — it never drops
+    existing tables, so data created by users is preserved across restarts."""
     connection = None
     cursor = None
     try:
@@ -55,13 +57,9 @@ def init_database():
         )
         cursor.execute(f"USE `{DB_NAME}`")
 
-        # 🔴 SUPPRIMER les anciennes tables si elles existent (pour recréer proprement)
-        cursor.execute("DROP TABLE IF EXISTS sessions")
-        cursor.execute("DROP TABLE IF EXISTS users")
-
-        # 🔴 RECRÉER avec nom ET prenom (pas name)
+        # ✅ CREATE TABLE IF NOT EXISTS : ne touche jamais aux données existantes
         cursor.execute("""
-            CREATE TABLE users (
+            CREATE TABLE IF NOT EXISTS users (
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 nom VARCHAR(100) NOT NULL,
                 prenom VARCHAR(100) NOT NULL,
@@ -78,7 +76,7 @@ def init_database():
         """)
 
         cursor.execute("""
-            CREATE TABLE sessions (
+            CREATE TABLE IF NOT EXISTS sessions (
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 user_id BIGINT NOT NULL,
                 jti VARCHAR(100) NOT NULL UNIQUE,
