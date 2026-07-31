@@ -90,8 +90,34 @@ def init_database():
             )
         """)
 
+        # ✅ AJOUTÉ : table des codes OTP (utilisée par /api/login, /api/resend-email, /api/verify-otp)
+        # user_id est PRIMARY KEY car app.py fait un "ON DUPLICATE KEY UPDATE" dessus
+        # (un seul OTP actif par utilisateur à la fois).
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS otp_codes (
+                user_id BIGINT PRIMARY KEY,
+                code VARCHAR(6) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                attempts INT NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+
+        # ✅ AJOUTÉ : table de suivi des tentatives de connexion (rate limiting)
+        # utilisée par is_rate_limited_db() et record_attempt_db() dans app.py
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS login_attempts (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                identifier VARCHAR(255) NOT NULL,
+                attempted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_identifier (identifier),
+                INDEX idx_attempted_at (attempted_at)
+            )
+        """)
+
         connection.commit()
-        print(f"✅ Database `{DB_NAME}` ready (users, sessions).")
+        print(f"✅ Database `{DB_NAME}` ready (users, sessions, otp_codes, login_attempts).")
 
         seed_admin(cursor, connection)
         return True

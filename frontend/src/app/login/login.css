@@ -270,25 +270,6 @@
   flex-shrink: 0;
 }
 
-/* Message de succès (aligné visuellement sur .error-msg) */
-.success-msg {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  margin-bottom: var(--spacing-lg);
-  line-height: 1.4;
-  animation: slideDown 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  background: var(--color-success-light);
-  color: var(--color-success);
-  border: 1px solid #c3ecce;
-  position: relative;
-  z-index: 1;
-}
-
 @keyframes slideDown {
   from {
     opacity: 0;
@@ -367,44 +348,6 @@
   background: var(--color-surface);
   box-shadow: var(--shadow-focus);
   transform: translateY(-1px);
-}
-
-/* ============================================
-   MOT DE PASSE (affichage/masquage)
-   ============================================ */
-.password-row {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-}
-
-.password-row input {
-  flex: 1;
-  min-width: 0;
-}
-
-.toggle-password-btn {
-  flex-shrink: 0;
-  width: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-surface-hover);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-lg);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  padding: 0;
-}
-
-.toggle-password-btn:hover {
-  background: var(--color-surface-active);
-  border-color: var(--color-border-hover);
-}
-
-.toggle-password-btn:active {
-  transform: scale(0.94);
 }
 
 /* ============================================
@@ -679,7 +622,7 @@
   cursor: not-allowed;
 }
 
-/* Timer OTP (générique, ex: .otp-timer) */
+/* Timer OTP */
 .otp-timer {
   text-align: center;
   font-size: var(--font-size-sm);
@@ -698,74 +641,6 @@
 
 .otp-timer .danger {
   color: var(--color-error);
-}
-
-/* Timer OTP (utilisé par login.html : .timer-row) */
-.timer-row {
-  text-align: center;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  margin: var(--spacing-sm) 0 var(--spacing-md);
-  position: relative;
-  z-index: 1;
-}
-
-.timer-row .timer-expired {
-  color: var(--color-error);
-  font-weight: var(--font-weight-semibold);
-}
-
-/* Actions secondaires sous l'étape OTP (renvoyer / retour) */
-.secondary-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 1;
-}
-
-.resend-btn {
-  background: none;
-  border: none;
-  color: var(--color-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  padding: 8px 16px;
-  transition: all var(--transition-fast);
-  font-family: inherit;
-  border-radius: var(--radius-sm);
-}
-
-.resend-btn:hover:not(:disabled) {
-  background: var(--color-primary-light);
-  color: var(--color-primary-dark);
-}
-
-.resend-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.back-btn {
-  background: none;
-  border: none;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  padding: 8px 16px;
-  transition: all var(--transition-fast);
-  font-family: inherit;
-  border-radius: var(--radius-sm);
-}
-
-.back-btn:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-navy);
 }
 
 /* ============================================
@@ -968,11 +843,6 @@
   .otp-section .btn-login {
     min-width: unset;
   }
-
-  .secondary-actions {
-    flex-direction: column;
-    gap: 4px;
-  }
 }
 
 /* Très petits écrans */
@@ -1076,4 +946,63 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
+}
+/* ============================================
+   MESSAGE DE SUCCÈS (à ajouter juste après le bloc .error-msg)
+   ============================================ */
+.success-msg {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-lg);
+  line-height: 1.4;
+  animation: slideDown 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: var(--color-success-light);
+  color: var(--color-success);
+  border: 1px solid #c5ecd0;
+  position: relative;
+  z-index: 1;
+}
+
+.success-msg::before {
+  content: '📨';
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   TOGGLE MOT DE PASSE (à ajouter après le bloc CAPTCHA)
+   ============================================ */
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 44px; /* laisse la place au bouton œil */
+}
+
+.toggle-password {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.toggle-password:hover {
+  opacity: 1;
 }
