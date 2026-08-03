@@ -4,7 +4,7 @@ import { LoginComponent } from './login/login';
 import { InscriptionComponent } from './inscription/inscription';
 import { Dashboard } from './dashboard-etudiant/dashboard';
 import { TeacherDashboardComponent } from './dashboard-enseignant/enseignant';
-import { CoursComponent } from './cours/cours';
+import { CoursesComponent } from './cours/cours';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -19,7 +19,7 @@ export const routes: Routes = [
   { path: 'dashboard-enseignant', component: TeacherDashboardComponent },
 
   // Page catalogue de cours (étudiant)
-  { path: 'cours', component: CoursComponent },
+  { path: 'cours', component: CoursesComponent },
 
   { path: '**', redirectTo: '' }
 ];

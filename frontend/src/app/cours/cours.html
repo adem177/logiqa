@@ -1,80 +1,260 @@
-<header class="topbar">
-  <div class="logo">
-    <div class="logo-icon">🎓</div>
-    LOGIQA
-  </div>
-</header>
+<div class="courses-page">
+  <!-- ============================================
+    HERO SECTION
+    ============================================ -->
+  <section class="hero">
+    <div class="hero-content">
+      <span class="badge">
+        <span class="badge-icon">📚</span>
+        E-LEARNING
+      </span>
 
-<main>
-  <div class="top-row">
-    <h1>Cours</h1>
-    <button class="cta-btn" (click)="openCreateForm()">+ Ajouter un cours</button>
-  </div>
+      <h1>Découvrez nos formations</h1>
 
-  <div class="error-banner" *ngIf="errorMessage">
-    {{ errorMessage }}
-    <button class="close-btn" (click)="errorMessage = ''">✕</button>
-  </div>
+      <p class="hero-subtitle">
+        Développez vos compétences grâce à nos formations professionnelles
+        dispensées par des experts du secteur.
+      </p>
 
-  <!-- Formulaire création / édition -->
-  <div class="form-panel" *ngIf="showForm">
-    <h2>{{ isEditMode ? 'Modifier le cours' : 'Nouveau cours' }}</h2>
+      <!-- Search -->
+      <div class="search-box" [class.focused]="isSearchFocused">
+        <span class="search-icon">🔍</span>
 
-    <div class="form-grid">
-      <label>
-        Titre
-        <input type="text" [(ngModel)]="formModel.titre" placeholder="Ex: Introduction à Angular">
-      </label>
+        <input
+          type="text"
+          placeholder="Rechercher un cours, une catégorie ou un sujet..."
+          [(ngModel)]="searchTerm"
+          (focus)="isSearchFocused = true"
+          (blur)="isSearchFocused = false"
+          aria-label="Rechercher des cours"
+          id="searchInput"
+          #searchInput>
 
-      <label>
-        Catégorie
-        <input type="text" [(ngModel)]="formModel.categorie" placeholder="Ex: Développement web">
-      </label>
+        <button
+          *ngIf="searchTerm()"
+          class="clear-search"
+          (click)="clearSearch()"
+          aria-label="Effacer la recherche"
+          type="button">
+          ✕
+        </button>
+      </div>
 
-      <label>
-        Niveau
-        <select [(ngModel)]="formModel.niveau">
-          <option value="Débutant">Débutant</option>
-          <option value="Intermédiaire">Intermédiaire</option>
-          <option value="Avancé">Avancé</option>
-        </select>
-      </label>
-
-      <label class="full-width">
-        Description
-        <textarea rows="3" [(ngModel)]="formModel.description" placeholder="Décris le contenu du cours"></textarea>
-      </label>
-    </div>
-
-    <div class="form-actions">
-      <button class="btn-secondary" (click)="cancelForm()">Annuler</button>
-      <button class="cta-btn" (click)="submitForm()">{{ isEditMode ? 'Enregistrer' : 'Créer' }}</button>
-    </div>
-  </div>
-
-  <!-- Chargement -->
-  <div class="loading" *ngIf="loading">Chargement des cours...</div>
-
-  <!-- Liste des cours -->
-  <div class="cours-grid" *ngIf="!loading && coursList.length">
-    <div class="cours-card" *ngFor="let cours of coursList">
-      <div class="cours-badge">{{ cours.niveau }}</div>
-      <h3>{{ cours.titre }}</h3>
-      <p class="cours-categorie">{{ cours.categorie }}</p>
-      <p class="cours-desc">{{ cours.description }}</p>
-
-      <div class="cours-actions">
-        <button class="btn-edit" (click)="openEditForm(cours)">Modifier</button>
-        <button class="btn-delete" (click)="deleteCours(cours)">Supprimer</button>
+      <!-- Stats rapides -->
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat-value">{{ courses().length }}</span>
+          <span class="hero-stat-label">Cours disponibles</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-value">{{ stats().categories }}</span>
+          <span class="hero-stat-label">Catégories</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-value">4.8</span>
+          <span class="hero-stat-label">Note moyenne ⭐</span>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- État vide -->
-  <div class="empty-state" *ngIf="!loading && !coursList.length">
-    <div class="empty-emoji">📚</div>
-    <div class="empty-title">Aucun cours disponible</div>
-    <div class="empty-text">Commence par ajouter ton premier cours.</div>
-    <button class="cta-btn" (click)="openCreateForm()">Ajouter un cours</button>
-  </div>
-</main>
+  <!-- ============================================
+    CATEGORIES
+    ============================================ -->
+  <section class="categories-section">
+    <div class="categories-header">
+      <span class="categories-label">Filtrer par catégorie</span>
+      <span class="categories-count">{{ stats().categories }} catégories</span>
+    </div>
+
+    <div class="categories-scroll">
+      <button
+        *ngFor="let category of categories()"
+        class="category-btn"
+        [class.active]="selectedCategory() === category"
+        (click)="selectCategory(category)"
+        [attr.aria-pressed]="selectedCategory() === category">
+        {{ category }}
+        <span *ngIf="category !== 'Tous'" class="category-count">
+          {{ courses().filter(c => c.category === category).length }}
+        </span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============================================
+    COURSES LIST
+    ============================================ -->
+  <section class="courses-container">
+    <!-- Header -->
+    <div class="section-header">
+      <div class="section-header-left">
+        <h2>Nos formations</h2>
+        <p class="section-subtitle">
+          {{ filteredCourses().length }} cours disponibles
+          <span *ngIf="searchTerm() || selectedCategory() !== 'Tous'" class="filter-badge">
+            🎯 Filtrés
+          </span>
+        </p>
+      </div>
+
+      <div class="section-header-right">
+        <div class="sort-wrapper">
+          <label for="sortSelect" class="sort-label">Trier par</label>
+          <select
+            id="sortSelect"
+            [value]="selectedSort()"
+            (change)="changeSort($any($event.target).value)"
+            class="sort-select">
+            <option *ngFor="let option of sortOptions" [value]="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+
+        <button class="view-toggle" aria-label="Vue en grille">
+          <span class="view-icon">⊞</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="loading-state">
+      <div class="spinner"></div>
+      <p>Chargement des cours...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error()" class="error-state">
+      <span class="error-icon">⚠️</span>
+      <p>{{ error() }}</p>
+      <button class="retry-btn" (click)="loadCourses()">Réessayer</button>
+    </div>
+
+    <!-- No Results -->
+    <div *ngIf="!isLoading() && !error() && filteredCourses().length === 0" class="empty-state">
+      <span class="empty-icon">🔍</span>
+      <h3>Aucun cours trouvé</h3>
+      <p>
+        Aucun cours ne correspond à vos critères de recherche.
+        Essayez de modifier vos filtres.
+      </p>
+      <button class="reset-filters" (click)="clearSearch(); selectCategory('Tous')">
+        Réinitialiser les filtres
+      </button>
+    </div>
+
+    <!-- Grid : uniquement les cours de la page courante (max 6) -->
+    <div class="courses-grid" *ngIf="!isLoading() && !error() && filteredCourses().length > 0">
+      <div
+        class="course-card"
+        *ngFor="let course of paginatedCourses()"
+        (click)="viewCourse(course.id)"
+        [attr.aria-label]="course.title">
+
+        <!-- Image -->
+        <div class="course-image">
+          <img
+            [src]="course.image"
+            [alt]="course.title"
+            (error)="onImageError($event)"
+            loading="lazy">
+
+          <span class="category-tag">
+            {{ course.category }}
+          </span>
+
+          <div class="course-badges">
+            <span *ngIf="course.isPremium" class="badge-premium">⭐ Premium</span>
+            <span *ngIf="course.level" class="badge-level">{{ course.level }}</span>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="course-content">
+          <h3 class="course-title">{{ course.title }}</h3>
+
+          <p class="course-description">
+            {{ course.description }}
+          </p>
+
+          <div class="course-meta">
+            <span class="meta-item">
+              <span class="meta-icon">👨‍🏫</span>
+              {{ course.instructor }}
+            </span>
+            <span class="meta-item">
+              <span class="meta-icon">📚</span>
+              {{ course.lessons }} leçons
+            </span>
+            <span class="meta-item">
+              <span class="meta-icon">⏱️</span>
+              {{ course.duration }}h
+            </span>
+          </div>
+
+          <div class="course-rating">
+            <span class="stars">{{ getStars(course.rating) }}</span>
+            <span class="rating-value">{{ course.rating }}</span>
+            <span class="reviews-count">({{ course.reviewsCount }})</span>
+          </div>
+
+          <div class="course-footer">
+            <div class="price-wrapper">
+              <strong class="course-price" [class]="getPriceClass(course.price)">
+                {{ course.price === 0 ? 'Gratuit' : course.price + ' DT' }}
+              </strong>
+              <span *ngIf="course.price > 0" class="price-cours">Cours</span>
+            </div>
+
+            <button
+              class="btn-view"
+              (click)="$event.stopPropagation(); viewCourse(course.id)">
+              Voir le cours
+              <span class="btn-arrow">→</span>
+            </button>
+          </div>
+
+          <div class="course-stats">
+            <span class="stat-enrolled">
+              <span class="stat-icon">👥</span>
+              {{ course.enrolledCount }} inscrits
+            </span>
+            <span class="stat-tags">
+              <span *ngFor="let tag of course.tags.slice(0, 3)" class="tag">
+                #{{ tag }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination fonctionnelle -->
+    <div class="pagination" *ngIf="totalPages() > 1">
+      <button
+        class="page-btn"
+        [disabled]="currentPage() === 1"
+        (click)="previousPage()"
+        aria-label="Page précédente">
+        ‹
+      </button>
+
+      <button
+        *ngFor="let page of pageNumbers()"
+        class="page-btn"
+        [class.active]="currentPage() === page"
+        (click)="goToPage(page)">
+        {{ page }}
+      </button>
+
+      <button
+        class="page-btn"
+        [disabled]="currentPage() === totalPages()"
+        (click)="nextPage()"
+        aria-label="Page suivante">
+        ›
+      </button>
+    </div>
+  </section>
+</div>

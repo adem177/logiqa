@@ -17,7 +17,6 @@ import { environment } from '../../environments/environements';
 export class LoginComponent implements OnDestroy {
   login: string = '';
   password: string = '';
-  showPassword: boolean = false;
   captchaInput: string = '';
   captchaCode: string = '';
   isSubmitting: boolean = false;
@@ -29,13 +28,8 @@ export class LoginComponent implements OnDestroy {
   isVerifying: boolean = false;
   isResending: boolean = false;
 
-  // ===== TIMER D'EXPIRATION DU CODE (5 minutes) =====
   timer: number = 300;
   timerInterval: any = null;
-
-  // ===== TIMER DE RENVOI (cooldown de 2 minutes avant de pouvoir renvoyer) =====
-  resendTimer: number = 120;
-  resendInterval: any = null;
 
   errorVisible: boolean = false;
   errorMessage: string = '';
@@ -56,7 +50,6 @@ export class LoginComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.stopTimer();
-    this.stopResendTimer();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -65,16 +58,6 @@ export class LoginComponent implements OnDestroy {
     const m = Math.floor(this.timer / 60);
     const s = this.timer % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  }
-
-  get formattedResendTimer(): string {
-    const m = Math.floor(this.resendTimer / 60);
-    const s = this.resendTimer % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  }
-
-  get canResend(): boolean {
-    return this.resendTimer <= 0 && !this.isResending;
   }
 
   isValidEmail(): boolean {
@@ -196,7 +179,6 @@ export class LoginComponent implements OnDestroy {
         this.otpCode = '';
         this.errorVisible = false;
         this.startTimer();
-        this.startResendTimer();
 
         this.successMessage = '📨 Un code de vérification a été envoyé par e-mail.';
         this.successVisible = true;
@@ -261,7 +243,6 @@ export class LoginComponent implements OnDestroy {
         localStorage.setItem('token', response.token);
         localStorage.setItem('user', JSON.stringify(response.user));
         this.stopTimer();
-        this.stopResendTimer();
         this.redirectByRole(response.user?.role);
       },
       error: () => {
@@ -274,7 +255,7 @@ export class LoginComponent implements OnDestroy {
 
   // ===== RENVOYER OTP =====
   renvoyerEmail(): void {
-    if (!this.canResend) return; // respecte le cooldown de 2 minutes + anti double-clic
+    if (this.timer > 0 || this.isResending) return;
 
     this.isResending = true;
     this.errorVisible = false;
@@ -317,7 +298,6 @@ export class LoginComponent implements OnDestroy {
         this.successVisible = true;
         this.otpCode = '';
         this.startTimer();
-        this.startResendTimer();
         setTimeout(() => this.successVisible = false, 4000);
       },
       error: () => {
@@ -328,7 +308,6 @@ export class LoginComponent implements OnDestroy {
     });
   }
 
-  // ===== TIMER D'EXPIRATION =====
   startTimer(): void {
     this.timer = 300;
     this.stopTimer();
@@ -349,32 +328,11 @@ export class LoginComponent implements OnDestroy {
     }
   }
 
-  // ===== TIMER DE RENVOI =====
-  startResendTimer(): void {
-    this.resendTimer = 120;
-    this.stopResendTimer();
-    this.resendInterval = setInterval(() => {
-      this.resendTimer--;
-      if (this.resendTimer <= 0) {
-        this.stopResendTimer();
-      }
-      this.cdr.detectChanges(); // s'assure que le compte à rebours s'affiche en temps réel
-    }, 1000);
-  }
-
-  stopResendTimer(): void {
-    if (this.resendInterval) {
-      clearInterval(this.resendInterval);
-      this.resendInterval = null;
-    }
-  }
-
   retournerConnexion(): void {
     this.otpStep = false;
     this.otpCode = '';
     this.pendingUserId = null;
     this.stopTimer();
-    this.stopResendTimer();
     this.errorVisible = false;
     this.successVisible = false;
     this.refreshCaptcha();

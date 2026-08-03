@@ -1,4 +1,6 @@
 import re
+import logging
+import secrets
 import threading
 from init_db import seed_admin, init_database
 from flask import Flask, request, jsonify
@@ -12,20 +14,29 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from functools import wraps
 from db import get_connection
-from collections import defaultdict
-from time import time
 import smtplib
-import random
 from email.mime.text import MIMEText
 from pymysql.err import IntegrityError
 
 load_dotenv()
 
+# ===== LOGGING =====
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 
-# ===== CORS RESTREINT (production) =====
-# Remplacez '*' par votre domaine Angular exact
-CORS(app, origins=os.getenv('FRONTEND_URL', 'http://localhost:4200'))
+# ===== CORS CORRIGÉ =====
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:4200", "http://127.0.0.1:4200"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 JWT_SECRET = os.getenv('JWT_SECRET')
 if not JWT_SECRET:
@@ -35,20 +46,14 @@ SESSION_DURATION_DAYS = 2
 EMAIL_ADDRESS = os.getenv('EMAIL_ADDRESS')
 EMAIL_APP_PASSWORD = os.getenv('EMAIL_APP_PASSWORD')
 
-# ===== OTP EN BASE DE DONNÉES (pas en RAM) =====
-# Remplacez OTP_STORE = {} par une table SQL :
-# CREATE TABLE otp_codes (
-#   user_id INT PRIMARY KEY,
-#   code VARCHAR(6) NOT NULL,
-#   expires_at DATETIME NOT NULL,
-#   attempts INT DEFAULT 0,
-#   created_at DATETIME DEFAULT NOW()
-# );
+EMAIL_REGEX = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+NIVEAUX_VALIDES = ['Débutant', 'Intermédiaire', 'Avancé']
 
-# ===== RATE LIMITING EN BASE (pas en RAM) =====
-# Ou utilisez Flask-Limiter. Exemple simple avec DB :
+MAX_FIELD_LENGTH = 200
+MAX_DESCRIPTION_LENGTH = 5000
+
+# ===== RATE LIMITING EN BASE =====
 def is_rate_limited_db(cursor, key, max_attempts=5, window_sec=300):
-    """Vérifie les tentatives en base (compatible multi-worker)."""
     since = datetime.now(timezone.utc) - timedelta(seconds=window_sec)
     cursor.execute(
         "SELECT COUNT(*) as cnt FROM login_attempts WHERE identifier=%s AND attempted_at > %s",
@@ -67,16 +72,22 @@ def hash_token(token):
 def is_valid_password(password):
     return len(password) >= 8 and re.search(r'[A-Za-z]', password) and re.search(r'\d', password)
 
+def is_valid_email(email):
+    return bool(EMAIL_REGEX.match(email)) if email else False
+
+def is_valid_field_length(text, max_length=MAX_FIELD_LENGTH):
+    return text is not None and len(text) <= max_length
+
 def contains_suspicious_html(text):
     return bool(re.search(r'<[^>]*>', text)) if text else False
 
 def generate_otp():
-    return str(random.randint(100000, 999999))
+    # secrets.randbelow est cryptographiquement sûr, contrairement à random.randint
+    return str(secrets.randbelow(900000) + 100000)
 
 def send_otp_email(to_email, code):
-    """Retourne True si envoyé, False sinon."""
     if not EMAIL_ADDRESS or not EMAIL_APP_PASSWORD:
-        print("⚠️ Credentials email manquants")
+        logger.warning("Credentials email manquants, envoi OTP annulé")
         return False
     try:
         msg = MIMEText(
@@ -92,8 +103,8 @@ def send_otp_email(to_email, code):
             server.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
             server.send_message(msg)
         return True
-    except Exception as e:
-        print(f"Erreur envoi email: {e}")
+    except Exception:
+        logger.exception(f"Erreur envoi email à {to_email}")
         return False
 
 def create_token_response(user, cursor, conn):
@@ -142,8 +153,15 @@ def register():
     if not all([nom, prenom, email, password]):
         return jsonify({"error": "Tous les champs obligatoires doivent être remplis."}), 400
 
+    if not is_valid_email(email):
+        return jsonify({"error": "Adresse email invalide."}), 400
+
     if not is_valid_password(password):
         return jsonify({"error": "Le mot de passe doit contenir au moins 8 caractères, une lettre et un chiffre."}), 400
+
+    for field in [nom, prenom, telephone]:
+        if field and not is_valid_field_length(field):
+            return jsonify({"error": "Un des champs dépasse la longueur autorisée."}), 400
 
     for field in [nom, prenom, email, telephone]:
         if field and contains_suspicious_html(field):
@@ -155,8 +173,14 @@ def register():
 
     try:
         cursor = conn.cursor()
+
+        # Rate limiting sur les créations de compte (anti-spam)
+        if is_rate_limited_db(cursor, f"register:{email}", max_attempts=5, window_sec=600):
+            return jsonify({"error": "Trop de tentatives. Réessayez plus tard."}), 429
+
         cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
         if cursor.fetchone():
+            record_attempt_db(cursor, conn, f"register:{email}")
             return jsonify({"error": "Un compte existe déjà avec cet email."}), 409
 
         hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -164,17 +188,18 @@ def register():
             "INSERT INTO users (nom, prenom, email, password, telephone, role) VALUES (%s, %s, %s, %s, %s, %s)",
             (nom, prenom, email, hashed, telephone, role)
         )
+        record_attempt_db(cursor, conn, f"register:{email}")
         conn.commit()
         return jsonify({"success": True, "message": "Compte créé avec succès."})
     except IntegrityError:
         return jsonify({"error": "Un compte existe déjà avec cet email."}), 409
-    except Exception as e:
-        print(f"Erreur inscription: {e}")
+    except Exception:
+        logger.exception("Erreur inscription")
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
         conn.close()
 
-# ===== CONNEXION ÉTAPE 1 (avec CAPTCHA côté serveur) =====
+# ===== CONNEXION ÉTAPE 1 =====
 @app.route('/api/login', methods=['POST'])
 def login():
     if not request.is_json:
@@ -183,15 +208,9 @@ def login():
     data = request.get_json() or {}
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
-    captcha = data.get('captcha', '').strip()          # ← AJOUTÉ
-    captcha_session = data.get('captcha_session', '')   # ← AJOUTÉ
 
     if not email or not password:
         return jsonify({"error": "Email et mot de passe requis."}), 400
-
-    # TODO: Vérifier le captcha côté serveur (ex: stocké en session Redis/DB)
-    # if not verify_server_captcha(captcha_session, captcha):
-    #     return jsonify({"error": "Captcha incorrect."}), 403
 
     conn = get_connection()
     if not conn:
@@ -199,8 +218,6 @@ def login():
 
     try:
         cursor = conn.cursor()
-
-        # Rate limiting DB
         rate_key = email
         if is_rate_limited_db(cursor, rate_key):
             return jsonify({"error": "Trop de tentatives. Réessayez dans 5 minutes."}), 429
@@ -216,7 +233,6 @@ def login():
 
         del user['password']
 
-        # Vérifier cooldown OTP existant
         cursor.execute(
             "SELECT code, expires_at FROM otp_codes WHERE user_id = %s", (user['id'],)
         )
@@ -227,7 +243,6 @@ def login():
                 "message": "Un code a déjà été envoyé. Vérifiez votre boîte mail."
             })
 
-        # Générer OTP
         code = generate_otp()
         expires = datetime.now(timezone.utc) + timedelta(minutes=5)
 
@@ -239,23 +254,22 @@ def login():
         )
         conn.commit()
 
-        # Envoi asynchrone mais avec retour d'erreur loggé
         def async_send():
             ok = send_otp_email(user['email'], code)
             if not ok:
-                print(f"⚠️ Échec envoi OTP à {user['email']}")
+                logger.warning(f"Échec envoi OTP à {user['email']}")
 
         threading.Thread(target=async_send, daemon=True).start()
 
         return jsonify({"success": True, "user_id": user['id']})
 
-    except Exception as e:
-        print(f"Erreur login: {e}")
+    except Exception:
+        logger.exception("Erreur login")
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
         conn.close()
 
-# ===== RENVOYER OTP (protégé par vérification basique) =====
+# ===== RENVOYER OTP =====
 @app.route('/api/resend-email', methods=['POST'])
 def resend_email():
     if not request.is_json:
@@ -274,10 +288,15 @@ def resend_email():
 
     try:
         cursor = conn.cursor()
-        # Vérifier que l'user existe et correspond à l'email
+
+        # Rate limiting sur le renvoi d'OTP (anti-spam email)
+        if is_rate_limited_db(cursor, f"resend:{email}", max_attempts=5, window_sec=600):
+            return jsonify({"error": "Trop de tentatives. Réessayez plus tard."}), 429
+
         cursor.execute("SELECT id, email FROM users WHERE id = %s", (user_id,))
         user = cursor.fetchone()
         if not user or user['email'] != email:
+            record_attempt_db(cursor, conn, f"resend:{email}")
             return jsonify({"error": "Non autorisé."}), 403
 
         code = generate_otp()
@@ -289,18 +308,19 @@ def resend_email():
                ON DUPLICATE KEY UPDATE code=%s, expires_at=%s, attempts=0""",
             (user_id, code, expires.replace(tzinfo=None), code, expires.replace(tzinfo=None))
         )
+        record_attempt_db(cursor, conn, f"resend:{email}")
         conn.commit()
 
         threading.Thread(target=send_otp_email, args=(email, code), daemon=True).start()
         return jsonify({"success": True, "message": "Un nouveau code a été envoyé."})
 
-    except Exception as e:
-        print(f"Erreur resend: {e}")
+    except Exception:
+        logger.exception("Erreur resend")
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
         conn.close()
 
-# ===== VÉRIFICATION OTP (avec rate limiting par tentative) =====
+# ===== VÉRIFICATION OTP =====
 @app.route('/api/verify-otp', methods=['POST'])
 def verify_otp():
     if not request.is_json:
@@ -327,7 +347,6 @@ def verify_otp():
         if not entry:
             return jsonify({"error": "Aucun code en attente. Reconnectez-vous."}), 400
 
-        # Incrémenter les tentatives
         new_attempts = entry['attempts'] + 1
         if new_attempts > 5:
             cursor.execute("DELETE FROM otp_codes WHERE user_id = %s", (user_id,))
@@ -348,7 +367,6 @@ def verify_otp():
         if code != entry['code']:
             return jsonify({"error": "Code incorrect."}), 401
 
-        # Succès : supprimer l'OTP
         cursor.execute("DELETE FROM otp_codes WHERE user_id = %s", (user_id,))
         conn.commit()
 
@@ -360,13 +378,13 @@ def verify_otp():
         response = create_token_response(user, cursor, conn)
         return jsonify(response)
 
-    except Exception as e:
-        print(f"Erreur verify-otp: {e}")
+    except Exception:
+        logger.exception("Erreur verify-otp")
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
         conn.close()
 
-# ===== MIDDLEWARE (inchangé, fonctionnel) =====
+# ===== MIDDLEWARE =====
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -421,8 +439,8 @@ def logout():
         cursor.execute("UPDATE sessions SET revoked = TRUE WHERE jti = %s", (request.user['jti'],))
         conn.commit()
         return jsonify({"success": True, "message": "Déconnexion réussie."})
-    except Exception as e:
-        print(f"Erreur logout: {e}")
+    except Exception:
+        logger.exception("Erreur logout")
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
         conn.close()
@@ -432,7 +450,173 @@ def logout():
 def me():
     return jsonify({"user": request.user})
 
-# ===== PURGE SESSIONS (à appeler via cron ou au démarrage) =====
+# ===== COURS (CRUD) =====
+
+@app.route('/api/cours', methods=['GET'])
+def get_cours():
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, titre, description, categorie, niveau, enseignant_id FROM cours")
+        cours_list = cursor.fetchall()
+        return jsonify(cours_list)
+    except Exception:
+        logger.exception("Erreur récupération cours")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/cours/<int:cours_id>', methods=['GET'])
+def get_cours_by_id(cours_id):
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, titre, description, categorie, niveau, enseignant_id FROM cours WHERE id = %s",
+            (cours_id,)
+        )
+        cours = cursor.fetchone()
+        if not cours:
+            return jsonify({"error": "Cours introuvable."}), 404
+        return jsonify(cours)
+    except Exception:
+        logger.exception("Erreur récupération cours")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/cours', methods=['POST'])
+@token_required
+def create_cours():
+    data = request.get_json() or {}
+    titre = data.get('titre', '').strip()
+    description = data.get('description', '').strip()
+    categorie = data.get('categorie', '').strip()
+    niveau = data.get('niveau', 'Débutant').strip()
+
+    if not titre or not description:
+        return jsonify({"error": "Le titre et la description sont obligatoires."}), 400
+
+    if not is_valid_field_length(titre) or not is_valid_field_length(description, MAX_DESCRIPTION_LENGTH):
+        return jsonify({"error": "Le titre ou la description dépasse la longueur autorisée."}), 400
+
+    if niveau not in NIVEAUX_VALIDES:
+        return jsonify({"error": f"Niveau invalide. Valeurs acceptées : {', '.join(NIVEAUX_VALIDES)}."}), 400
+
+    if contains_suspicious_html(titre) or contains_suspicious_html(description):
+        return jsonify({"error": "Caractères non autorisés détectés."}), 400
+
+    enseignant_id = request.user['id']
+
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO cours (titre, description, categorie, niveau, enseignant_id) VALUES (%s, %s, %s, %s, %s)",
+            (titre, description, categorie, niveau, enseignant_id)
+        )
+        conn.commit()
+        new_id = cursor.lastrowid
+
+        return jsonify({
+            "id": new_id, "titre": titre, "description": description,
+            "categorie": categorie, "niveau": niveau, "enseignant_id": enseignant_id
+        })
+    except Exception:
+        logger.exception("Erreur création cours")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/cours/<int:cours_id>', methods=['PUT'])
+@token_required
+def update_cours(cours_id):
+    data = request.get_json() or {}
+    titre = data.get('titre', '').strip()
+    description = data.get('description', '').strip()
+    categorie = data.get('categorie', '').strip()
+    niveau = data.get('niveau', 'Débutant').strip()
+
+    if not titre or not description:
+        return jsonify({"error": "Le titre et la description sont obligatoires."}), 400
+
+    if not is_valid_field_length(titre) or not is_valid_field_length(description, MAX_DESCRIPTION_LENGTH):
+        return jsonify({"error": "Le titre ou la description dépasse la longueur autorisée."}), 400
+
+    if niveau not in NIVEAUX_VALIDES:
+        return jsonify({"error": f"Niveau invalide. Valeurs acceptées : {', '.join(NIVEAUX_VALIDES)}."}), 400
+
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT enseignant_id FROM cours WHERE id = %s", (cours_id,))
+        existing = cursor.fetchone()
+        if not existing:
+            return jsonify({"error": "Cours introuvable."}), 404
+
+        if existing['enseignant_id'] != request.user['id']:
+            return jsonify({"error": "Action non autorisée."}), 403
+
+        cursor.execute(
+            "UPDATE cours SET titre = %s, description = %s, categorie = %s, niveau = %s WHERE id = %s",
+            (titre, description, categorie, niveau, cours_id)
+        )
+        conn.commit()
+
+        return jsonify({
+            "id": cours_id, "titre": titre, "description": description,
+            "categorie": categorie, "niveau": niveau, "enseignant_id": existing['enseignant_id']
+        })
+    except Exception:
+        logger.exception("Erreur modification cours")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/cours/<int:cours_id>', methods=['DELETE'])
+@token_required
+def delete_cours(cours_id):
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT enseignant_id FROM cours WHERE id = %s", (cours_id,))
+        existing = cursor.fetchone()
+        if not existing:
+            return jsonify({"error": "Cours introuvable."}), 404
+
+        if existing['enseignant_id'] != request.user['id']:
+            return jsonify({"error": "Action non autorisée."}), 403
+
+        cursor.execute("DELETE FROM cours WHERE id = %s", (cours_id,))
+        conn.commit()
+        return jsonify({"success": True, "message": "Cours supprimé."})
+    except Exception:
+        logger.exception("Erreur suppression cours")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+# ===== PURGE SESSIONS =====
 def purge_expired_sessions():
     conn = get_connection()
     if conn:
@@ -451,5 +635,4 @@ if __name__ == '__main__':
     purge_expired_sessions()
 
     port = int(os.getenv('PORT', 3000))
-    # debug=False obligatoire en production
     app.run(host='0.0.0.0', debug=False, port=port)
