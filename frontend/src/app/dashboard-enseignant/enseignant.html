@@ -4,7 +4,7 @@
     LOGIQA
     <span class="role-badge">ESPACE ENSEIGNANT</span>
   </div>
-  <div class="home-btn">⌂</div>
+  <button class="home-btn" (click)="goHome()" title="Retour à l'accueil">⌂</button>
 </header>
 
 <main>
@@ -15,73 +15,99 @@
     </div>
 
     <div class="progress-widget">
-      <div class="progress-ring"
-           [style.background]="'conic-gradient(var(--blue) ' + progressStrokeDeg + 'deg, #e5e9f0 0deg)'">
+      <div 
+        class="progress-ring"
+        [style.background]="'conic-gradient(#4f46e5 ' + progressStrokeDeg + 'deg, #e5e9f0 0deg)'">
         <span>{{ completionRate }}%</span>
       </div>
       <div class="progress-label">Taux de<br>complétion des cours</div>
     </div>
   </div>
 
+  <!-- STATISTIQUES -->
   <div class="stats-grid">
-    <div class="stat-card" *ngFor="let stat of stats">
-      <div class="stat-icon" [ngClass]="stat.iconClass">{{ stat.icon }}</div>
-      <div>
-        <div class="stat-value">{{ stat.value }}</div>
-        <div class="stat-title">{{ stat.title }}</div>
-        <div class="stat-sub" [class.muted]="stat.subMuted">{{ stat.sub }}</div>
+    @for (stat of stats; track stat.title) {
+      <div class="stat-card">
+        <div class="stat-icon" [ngClass]="stat.iconClass">{{ stat.icon }}</div>
+        <div>
+          <div class="stat-value">{{ stat.value }}</div>
+          <div class="stat-title">{{ stat.title }}</div>
+          <div class="stat-sub" [class.muted]="stat.subMuted">{{ stat.sub }}</div>
+        </div>
       </div>
-    </div>
+    }
   </div>
 
+  <!-- PANNEAUX COURS & ACTIVITÉ -->
   <div class="panels">
+    
+    <!-- SECTION MES COURS -->
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">Mes cours</div>
-        <a href="#" class="link-btn" *ngIf="courses.length">Voir tout</a>
+        <div class="panel-actions">
+          @if (courses.length > 0) {
+            <button class="cta-btn-sm" (click)="onCreateCourse()">+ Créer un cours</button>
+            <a routerLink="/cours" class="link-btn">Voir tout</a>
+          }
+        </div>
       </div>
 
       <!-- État vide -->
-      <div class="empty-state" *ngIf="!courses.length">
-        <div class="empty-emoji">📚</div>
-        <div class="empty-title">Aucun cours publié</div>
-        <div class="empty-text">
-          Partagez votre savoir-faire et créez votre première formation dès aujourd'hui.
-        </div>
-        <button class="cta-btn" (click)="onCreateCourse()">Créer un cours</button>
-      </div>
-
-      <!-- Liste des cours une fois qu'il y en a -->
-      <div class="course-list" *ngIf="courses.length">
-        <div class="course-row" *ngFor="let course of courses">
-          <img [src]="course.thumbnail" [alt]="course.title" class="course-thumb">
-          <div>
-            <div class="course-title">{{ course.title }}</div>
-            <div class="course-meta">{{ course.studentsCount }} étudiant(s)</div>
+      @if (courses.length === 0) {
+        <div class="empty-state">
+          <div class="empty-emoji">📚</div>
+          <div class="empty-title">Aucun cours publié</div>
+          <div class="empty-text">
+            Partagez votre savoir-faire et créez votre première formation dès aujourd'hui.
           </div>
+          <button class="cta-btn" (click)="onCreateCourse()">Créer un cours</button>
         </div>
-      </div>
+      }
+
+      <!-- Liste des cours -->
+      @if (courses.length > 0) {
+        <div class="course-list">
+          @for (course of courses; track course.id) {
+            <div class="course-row">
+              <img [src]="course.thumbnail" [alt]="course.title" class="course-thumb">
+              <div>
+                <div class="course-title">{{ course.title }}</div>
+                <div class="course-meta">{{ course.studentsCount }} étudiant(s)</div>
+              </div>
+            </div>
+          }
+        </div>
+      }
     </div>
 
+    <!-- SECTION ACTIVITÉ RÉCENTE -->
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">Activité récente</div>
       </div>
 
-      <div class="empty-state activity-empty" *ngIf="!activities.length">
-        <div class="empty-emoji">🕊️</div>
-        <div class="empty-title small">Aucune activité pour l'instant.</div>
-        <div class="empty-text no-margin">
-          Elle apparaîtra ici dès que vos étudiants commenceront à interagir avec vos cours.
+      @if (activities.length === 0) {
+        <div class="empty-state activity-empty">
+          <div class="empty-emoji">🕊️</div>
+          <div class="empty-title small">Aucune activité pour l'instant.</div>
+          <div class="empty-text no-margin">
+            Elle apparaîtra ici dès que vos étudiants commenceront à interagir avec vos cours.
+          </div>
         </div>
-      </div>
+      }
 
-      <ul class="activity-list" *ngIf="activities.length">
-        <li *ngFor="let item of activities">
-          <span class="activity-text">{{ item.text }}</span>
-          <span class="activity-date">{{ item.date }}</span>
-        </li>
-      </ul>
+      @if (activities.length > 0) {
+        <ul class="activity-list">
+          @for (item of activities; track item.id) {
+            <li>
+              <span class="activity-text">{{ item.text }}</span>
+              <span class="activity-date">{{ item.date }}</span>
+            </li>
+          }
+        </ul>
+      }
     </div>
+
   </div>
 </main>

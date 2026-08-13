@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { CommonModule, NgClass } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
 
 interface StatCard {
   icon: string;
@@ -27,11 +27,13 @@ interface ActivityItem {
 @Component({
   selector: 'app-teacher-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './enseignant.html',
   styleUrls: ['./enseignant.css']
 })
 export class TeacherDashboardComponent {
+  private router = inject(Router);
+
   teacherName = 'Adem';
   completionRate = 0; // 0-100
 
@@ -73,14 +75,17 @@ export class TeacherDashboardComponent {
   // Remplacer par un appel à un service qui récupère l'activité réelle
   activities: ActivityItem[] = [];
 
-  constructor(private router: Router) {}
-
   get progressStrokeDeg(): number {
     return (this.completionRate / 100) * 360;
   }
 
+  // Redirection vers le formulaire d'upload de cours
   onCreateCourse(): void {
-    // Redirige vers la page Cours
-    this.router.navigate(['/cours']);
+    this.router.navigate(['/enseignant/upload-cours']);
+  }
+
+  // Redirection vers l'accueil ou la liste générale
+  goHome(): void {
+    this.router.navigate(['/']);
   }
 }
