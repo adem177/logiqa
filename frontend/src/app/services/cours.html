@@ -1,0 +1,223 @@
+<div class="courses-page">
+  <!-- ============================================
+    HERO SECTION
+    ============================================ -->
+  <section class="hero">
+    <div class="hero-content">
+      <span class="badge">
+        <span class="badge-icon">📚</span>
+        E-LEARNING
+      </span>
+
+      <h1>Découvrez nos formations</h1>
+
+      <p class="hero-subtitle">
+        Développez vos compétences grâce à nos formations professionnelles.
+      </p>
+
+      <!-- Search -->
+      <div class="search-box" [class.focused]="isSearchFocused">
+        <span class="search-icon">🔍</span>
+
+        <input
+          type="text"
+          placeholder="Rechercher un cours, une catégorie..."
+          [(ngModel)]="searchTerm"
+          (focus)="isSearchFocused = true"
+          (blur)="isSearchFocused = false"
+          aria-label="Rechercher des cours"
+          id="searchInput"
+          #searchInput>
+
+        <button
+          *ngIf="searchTerm()"
+          class="clear-search"
+          (click)="clearSearch()"
+          aria-label="Effacer la recherche"
+          type="button">
+          ✕
+        </button>
+      </div>
+
+      <!-- Stats rapides -->
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat-value">{{ courses().length }}</span>
+          <span class="hero-stat-label">Cours disponibles</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-value">{{ stats().categories }}</span>
+          <span class="hero-stat-label">Catégories</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================
+    CATEGORIES
+    ============================================ -->
+  <section class="categories-section">
+    <div class="categories-header">
+      <span class="categories-label">Filtrer par catégorie</span>
+      <span class="categories-count">{{ stats().categories }} catégories</span>
+    </div>
+
+    <div class="categories-scroll">
+      <button
+        *ngFor="let category of categories()"
+        class="category-btn"
+        [class.active]="selectedCategory() === category"
+        (click)="selectCategory(category)"
+        [attr.aria-pressed]="selectedCategory() === category">
+        {{ category }}
+        <span *ngIf="category !== 'Tous'" class="category-count">
+          {{ courses().filter(c => c.category === category).length }}
+        </span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============================================
+    COURSES LIST
+    ============================================ -->
+  <section class="courses-container">
+    <!-- Header -->
+    <div class="section-header">
+      <div class="section-header-left">
+        <h2>Nos formations</h2>
+        <p class="section-subtitle">
+          {{ filteredCourses().length }} cours disponibles
+          <span *ngIf="searchTerm() || selectedCategory() !== 'Tous'" class="filter-badge">
+            🎯 Filtrés
+          </span>
+        </p>
+      </div>
+
+      <div class="section-header-right">
+        <div class="sort-wrapper">
+          <label for="sortSelect" class="sort-label">Trier par</label>
+          <select
+            id="sortSelect"
+            [value]="selectedSort()"
+            (change)="changeSort($any($event.target).value)"
+            class="sort-select">
+            <option *ngFor="let option of sortOptions" [value]="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+
+        <button class="view-toggle" aria-label="Vue en grille">
+          <span class="view-icon">⊞</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="loading-state">
+      <div class="spinner"></div>
+      <p>Chargement des cours...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error()" class="error-state">
+      <span class="error-icon">⚠️</span>
+      <p>{{ error() }}</p>
+      <button class="retry-btn" (click)="loadCourses()">Réessayer</button>
+    </div>
+
+    <!-- No Results -->
+    <div *ngIf="!isLoading() && !error() && filteredCourses().length === 0" class="empty-state">
+      <span class="empty-icon">🔍</span>
+      <h3>Aucun cours trouvé</h3>
+      <p>
+        Aucun cours ne correspond à vos critères de recherche.
+        Essayez de modifier vos filtres.
+      </p>
+      <button class="reset-filters" (click)="clearSearch(); selectCategory('Tous')">
+        Réinitialiser les filtres
+      </button>
+    </div>
+
+    <!-- Grid -->
+    <div class="courses-grid" *ngIf="!isLoading() && !error() && filteredCourses().length > 0">
+      <div
+        class="course-card"
+        *ngFor="let course of paginatedCourses()"
+        (click)="viewCourse(course)"
+        [attr.aria-label]="course.title">
+
+        <!-- Image -->
+        <div class="course-image">
+          <img
+            [src]="course.image"
+            [alt]="course.title"
+            (error)="onImageError($event)"
+            loading="lazy">
+
+          <span class="category-tag">
+            {{ course.category }}
+          </span>
+        </div>
+
+        <!-- Content -->
+        <div class="course-content">
+          <h3 class="course-title">{{ course.title }}</h3>
+
+          <p class="course-description">
+            {{ course.description }}
+          </p>
+
+          <div class="course-meta">
+            <span class="meta-item">
+              <span class="meta-icon">📚</span>
+              {{ course.lessons }} leçons
+            </span>
+          </div>
+
+          <div class="course-footer">
+            <button
+              class="btn-view"
+              (click)="$event.stopPropagation(); viewCourse(course)">
+              Voir le cours
+              <span class="btn-arrow">→</span>
+            </button>
+          </div>
+
+          <div class="course-tags">
+            <span *ngFor="let tag of course.tags.slice(0, 3)" class="tag">
+              #{{ tag }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="totalPages() > 1">
+      <button
+        class="page-btn"
+        [disabled]="currentPage() === 1"
+        (click)="previousPage()"
+        aria-label="Page précédente">
+        ‹
+      </button>
+
+      <button
+        *ngFor="let page of pageNumbers()"
+        class="page-btn"
+        [class.active]="currentPage() === page"
+        (click)="goToPage(page)">
+        {{ page }}
+      </button>
+
+      <button
+        class="page-btn"
+        [disabled]="currentPage() === totalPages()"
+        (click)="nextPage()"
+        aria-label="Page suivante">
+        ›
+      </button>
+    </div>
+  </section>
+</div>

@@ -8,19 +8,40 @@
 
     <!-- METADONNÉES DU COURS -->
     <section class="form-card">
-      <h2>1. Informations Générales</h2>
-      
+
+      <div class="form-group">
+        <label for="courseSubject">Matière *</label>
+        <select
+          id="courseSubject"
+          [ngModel]="courseSubject()"
+          (ngModelChange)="courseSubject.set($event); onSubjectChange()"
+          name="courseSubject"
+          required
+        >
+          <option value="" disabled selected>Sélectionner une matière</option>
+          @for (subject of subjects; track subject.value) {
+            <option [value]="subject.value">{{ subject.label }}</option>
+          }
+        </select>
+      </div>
+
       <div class="form-group">
         <label for="courseTitle">Titre du cours *</label>
-        <input 
-          id="courseTitle" 
-          type="text" 
-          [ngModel]="courseTitle()" 
+        <select
+          id="courseTitle"
+          [ngModel]="courseTitle()"
           (ngModelChange)="courseTitle.set($event)"
-          name="courseTitle" 
-          placeholder="Ex: Programmation Python Avancée" 
-          required 
-        />
+          name="courseTitle"
+          [disabled]="!courseSubject()"
+          required
+        >
+          <option value="" disabled selected>
+            {{ courseSubject() ? 'Sélectionner un chapitre' : 'Choisissez d\'abord une matière' }}
+          </option>
+          @for (t of availableTitles(); track t) {
+            <option [value]="t">{{ t }}</option>
+          }
+        </select>
       </div>
 
       <div class="form-group">
@@ -34,121 +55,62 @@
           placeholder="Résumé des objectifs du cours..."
         ></textarea>
       </div>
-    </section>
 
-    <!-- STRUCTURE DU COURS -->
-    <section class="form-card">
-      <div class="card-header-flex">
-        <h2>2. Structure et Contenu du Cours</h2>
-        <button type="button" class="btn-secondary" (click)="addSection()">
-          + Ajouter une section
-        </button>
+      <!-- UPLOAD VIDÉOS ET PDF -->
+      <div class="upload-grid">
+        
+        <!-- UPLOAD VIDÉOS -->
+        <div class="upload-block">
+          <label class="upload-label">🎬 Vidéos (MP4, MKV)</label>
+          <input 
+            type="file" 
+            #videoInput 
+            accept="video/*" 
+            multiple 
+            hidden 
+            (change)="onFileSelected($event, 'video')" 
+          />
+          <button type="button" class="btn-upload" (click)="videoInput.click()">
+            📁 Parcourir vidéos
+          </button>
+
+          <ul class="file-list">
+            @for (v of videos(); track $index) {
+              <li>
+                <span class="file-name">🎬 {{ v.name }}</span>
+                <button type="button" class="btn-remove-file" (click)="removeFile('video', $index)">✕</button>
+              </li>
+            }
+          </ul>
+        </div>
+
+        <!-- UPLOAD PDF -->
+        <div class="upload-block">
+          <label class="upload-label">📄 Documents PDF</label>
+          <input 
+            type="file" 
+            #pdfInput 
+            accept="application/pdf" 
+            multiple 
+            hidden 
+            (change)="onFileSelected($event, 'pdf')" 
+          />
+          <button type="button" class="btn-upload" (click)="pdfInput.click()">
+            📁 Parcourir PDF
+          </button>
+
+          <ul class="file-list">
+            @for (p of pdfs(); track $index) {
+              <li>
+                <span class="file-name">📄 {{ p.name }}</span>
+                <button type="button" class="btn-remove-file" (click)="removeFile('pdf', $index)">✕</button>
+              </li>
+            }
+          </ul>
+        </div>
+
       </div>
 
-      @for (section of sections(); track section.id; let sIdx = $index) {
-        <div class="section-box">
-          <div class="section-box-header">
-            <input 
-              type="text" 
-              [(ngModel)]="section.title" 
-              [name]="'section_title_' + section.id"
-              class="input-section-title"
-              placeholder="Titre de la section"
-            />
-            <button 
-              type="button" 
-              class="btn-icon-danger" 
-              (click)="removeSection(section.id)"
-              title="Supprimer la section">
-              🗑️
-            </button>
-          </div>
-
-          <!-- LISTE DES CHAPITRES DANS LA SECTION -->
-          <div class="chapters-container">
-            @for (chapter of section.chapters; track chapter.id; let cIdx = $index) {
-              <div class="chapter-box">
-                <div class="chapter-box-header">
-                  <input 
-                    type="text" 
-                    [(ngModel)]="chapter.title" 
-                    [name]="'chapter_title_' + chapter.id"
-                    class="input-chapter-title"
-                    placeholder="Titre du chapitre"
-                  />
-                  <button 
-                    type="button" 
-                    class="btn-icon-danger" 
-                    (click)="removeChapter(section.id, chapter.id)"
-                    title="Supprimer le chapitre">
-                    ❌
-                  </button>
-                </div>
-
-                <!-- ZONE DE DROP/UPLOAD POUR VIDÉOS & PDF -->
-                <div class="upload-grid">
-                  
-                  <!-- UPLOAD VIDÉOS -->
-                  <div class="upload-block">
-                    <label class="upload-label">🎬 Vidéos (MP4, MKV)</label>
-                    <input 
-                      type="file" 
-                      #videoInput 
-                      accept="video/*" 
-                      multiple 
-                      hidden 
-                      (change)="onFileSelected($event, chapter, 'video')" 
-                    />
-                    <button type="button" class="btn-upload" (click)="videoInput.click()">
-                      📁 Parcourir vidéos
-                    </button>
-
-                    <ul class="file-list">
-                      @for (v of chapter.videos; track $index) {
-                        <li>
-                          <span class="file-name">🎬 {{ v.name }}</span>
-                          <button type="button" class="btn-remove-file" (click)="removeFile(chapter, 'video', $index)">✕</button>
-                        </li>
-                      }
-                    </ul>
-                  </div>
-
-                  <!-- UPLOAD PDF -->
-                  <div class="upload-block">
-                    <label class="upload-label">📄 Documents PDF</label>
-                    <input 
-                      type="file" 
-                      #pdfInput 
-                      accept="application/pdf" 
-                      multiple 
-                      hidden 
-                      (change)="onFileSelected($event, chapter, 'pdf')" 
-                    />
-                    <button type="button" class="btn-upload" (click)="pdfInput.click()">
-                      📁 Parcourir PDF
-                    </button>
-
-                    <ul class="file-list">
-                      @for (p of chapter.pdfs; track $index) {
-                        <li>
-                          <span class="file-name">📄 {{ p.name }}</span>
-                          <button type="button" class="btn-remove-file" (click)="removeFile(chapter, 'pdf', $index)">✕</button>
-                        </li>
-                      }
-                    </ul>
-                  </div>
-
-                </div>
-              </div>
-            }
-
-            <button type="button" class="btn-add-chapter" (click)="addChapter(section.id)">
-              + Ajouter un chapitre à cette section
-            </button>
-          </div>
-
-        </div>
-      }
     </section>
 
     <!-- ACTION PUBLIER -->

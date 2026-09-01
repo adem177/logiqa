@@ -1,5 +1,5 @@
 /* ============================================
-   PAGE DÉTAIL COURS
+   PAGE DÉTAIL COURS - SIMPLIFIÉ
    ============================================ */
 
 .course-detail-page {
@@ -8,6 +8,7 @@
   padding: 24px;
   background: #f0f2f8;
   min-height: 100vh;
+  margin-top: 60px;
 }
 
 /* ---------- HEADER ---------- */
@@ -81,7 +82,21 @@
   font-size: 16px;
 }
 
-/* ---------- SECTION ---------- */
+/* ---------- TAB CONTENT ---------- */
+.tab-content {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------- SECTIONS ---------- */
 .section-block {
   margin-bottom: 24px;
 }
@@ -128,7 +143,6 @@
   border-radius: 14px;
   padding: 16px 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  cursor: pointer;
   transition: box-shadow 0.2s;
 }
 
@@ -140,11 +154,13 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  cursor: pointer;
 }
 
 .chapter-toggle {
   width: 20px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .toggle-icon {
@@ -183,11 +199,11 @@
   margin: 0 0 6px 0;
 }
 
-/* Résumé des ressources en badges */
 .chapter-resources-summary {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .resource-chip {
@@ -195,6 +211,7 @@
   padding: 2px 8px;
   border-radius: 6px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .resource-chip-video {
@@ -210,51 +227,28 @@
 .edit-icon {
   font-size: 18px;
   flex-shrink: 0;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s;
 }
 
-/* ---------- BARRE DE PROGRESSION ---------- */
-.chapter-progress {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 12px;
-  padding-left: 68px;
+.chapter-card:hover .edit-icon {
+  opacity: 1;
 }
 
-.progress-track {
-  flex: 1;
-  height: 4px;
-  background: #f3f4f6;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #4f46e5;
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1f2937;
-  min-width: 30px;
-  text-align: right;
-}
-
-/* ---------- CONTENU DÉPLIÉ ET SÉLECTEUR DE RESSOURCES ---------- */
+/* ---------- CONTENU DÉPLIÉ ---------- */
 .chapter-expanded {
   margin-top: 16px;
   padding-left: 68px;
+  padding-top: 12px;
+  border-top: 1px solid #f3f4f6;
   animation: slideDown 0.2s ease;
 }
 
 @keyframes slideDown {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
@@ -262,17 +256,27 @@
   }
 }
 
+.upload-error {
+  font-size: 13px;
+  color: #ef4444;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border-radius: 6px;
+}
+
+/* ---------- SÉLECTEUR DE RESSOURCES ---------- */
 .resource-switch {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .resource-switch-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
+  padding: 8px 16px;
   border-radius: 8px;
   border: 1px solid #e5e7eb;
   background: #f9fafb;
@@ -283,6 +287,11 @@
   transition: all 0.2s;
 }
 
+.resource-switch-btn:hover {
+  border-color: #d1d5db;
+  background: #f3f4f6;
+}
+
 .resource-switch-btn.active {
   background: #4f46e5;
   color: white;
@@ -291,56 +300,86 @@
 
 .resource-switch-count {
   font-size: 11px;
-  background: rgba(0, 0, 0, 0.08);
-  padding: 1px 6px;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 2px 6px;
   border-radius: 10px;
+  font-weight: 600;
 }
 
 .resource-switch-btn.active .resource-switch-count {
-  background: rgba(255, 255, 255, 0.25);
-  color: white;
+  background: rgba(255, 255, 255, 0.2);
 }
 
-/* Listes d'éléments Vidéo et PDF */
+/* ---------- LISTES DE RESSOURCES ---------- */
 .resource-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .resource-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 10px 12px;
   background: #f9fafb;
   border-radius: 8px;
+  border: 1px solid #f3f4f6;
   font-size: 14px;
   color: #374151;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .resource-item:hover {
   background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+.resource-icon {
+  flex-shrink: 0;
+  font-size: 12px;
 }
 
 .resource-item-video .resource-icon {
   color: #4f46e5;
-  font-size: 12px;
 }
 
 .resource-item-pdf .resource-icon {
   color: #ef4444;
-  font-size: 14px;
 }
 
 .resource-name {
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .resource-meta {
   font-size: 12px;
   color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.resource-delete {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.resource-delete:hover {
+  opacity: 1;
+}
+
+.resource-empty {
+  text-align: center;
+  padding: 20px;
+  color: #9ca3af;
+  font-size: 14px;
 }
 
 /* ---------- EXAMEN PLACEHOLDER ---------- */
@@ -353,6 +392,7 @@
   background: white;
   border-radius: 16px;
   text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .examen-icon {
@@ -374,17 +414,53 @@
 }
 
 /* ---------- RESPONSIVE ---------- */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .course-detail-page {
     padding: 16px;
   }
 
-  .chapter-progress,
+  .course-title {
+    font-size: 24px;
+  }
+
   .chapter-expanded {
     padding-left: 0;
   }
 
+  .section-header-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .resource-switch {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .course-detail-page {
+    padding: 12px;
+  }
+
   .course-title {
-    font-size: 22px;
+    font-size: 20px;
+  }
+
+  .tabs-nav {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tab-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
+  .resource-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

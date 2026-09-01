@@ -1,4 +1,3 @@
-
 .navbar {
   --primary: #0b4b7d;
   --accent: #2aabd6;
@@ -73,8 +72,39 @@
   background: rgba(42, 171, 214, 0.08);
 }
 
+/* ===== Dropdown "Examples" ===== */
 .dropdown {
   position: relative;
+}
+
+.dropdown-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 7px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.dropdown-toggle:hover {
+  color: var(--accent-deep);
+  background: rgba(42, 171, 214, 0.08);
+}
+
+.dropdown-toggle .arrow {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+
+.dropdown.open .dropdown-toggle .arrow {
+  transform: rotate(180deg);
 }
 
 .dropdown-menu {
@@ -90,10 +120,11 @@
   border: 1px solid var(--border);
   padding: 6px;
   min-width: 150px;
+  z-index: 1001;
   transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
 }
 
-.dropdown:hover .dropdown-menu {
+.dropdown.open .dropdown-menu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
@@ -196,4 +227,15 @@
   .btn-outline:not(.btn-home) {
     display: none;
   }
+}
+.dropdown {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1000;
+  display: block;
 }

@@ -1,0 +1,233 @@
+.about-page {
+  --primary: #0b4b7d;
+  --accent: #2aabd6;
+  --accent-deep: #1e8aa8;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --border: #eef2f6;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  color: var(--text);
+  padding-top: 56px; /* compense la navbar fixed */
+}
+
+/* ============================================
+   HERO
+   ============================================ */
+.about-hero {
+  background: linear-gradient(180deg, rgba(42, 171, 214, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
+  padding: 80px 32px 60px;
+  text-align: center;
+}
+
+.about-hero-content {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.about-badge {
+  display: inline-block;
+  background: rgba(42, 171, 214, 0.1);
+  color: var(--accent-deep);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 999px;
+  margin-bottom: 20px;
+  letter-spacing: 0.3px;
+}
+
+.about-title {
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--primary);
+  margin: 0 0 16px;
+  line-height: 1.2;
+}
+
+.about-title .highlight {
+  color: var(--accent-deep);
+}
+
+.about-subtitle {
+  font-size: 17px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ============================================
+   DESCRIPTION
+   ============================================ */
+.about-description {
+  padding: 40px 32px;
+}
+
+.description-content {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.description-content h2 {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 20px;
+}
+
+.description-content p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* ============================================
+   VALEURS
+   ============================================ */
+.about-values {
+  padding: 40px 32px 60px;
+}
+
+.values-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.value-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(11, 75, 125, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.value-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(11, 75, 125, 0.08);
+}
+
+.value-icon {
+  font-size: 36px;
+  margin-bottom: 16px;
+}
+
+.value-card h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+
+.value-card p {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ============================================
+   STATISTIQUES
+   ============================================ */
+.about-stats {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+  padding: 50px 32px;
+}
+
+.stats-grid {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  text-align: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+/* ============================================
+   CALL TO ACTION
+   ============================================ */
+.about-cta {
+  text-align: center;
+  padding: 70px 32px;
+}
+
+.about-cta h2 {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 12px;
+}
+
+.about-cta p {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+
+.cta-button {
+  display: inline-block;
+  padding: 12px 32px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+  color: #ffffff;
+  text-decoration: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  box-shadow: 0 8px 20px rgba(42, 171, 214, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(42, 171, 214, 0.36);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 900px) {
+  .values-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .about-title {
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .about-hero {
+    padding: 60px 20px 40px;
+  }
+
+  .about-title {
+    font-size: 26px;
+  }
+}

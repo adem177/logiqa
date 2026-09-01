@@ -8,15 +8,7 @@ interface Course {
   title: string;
   category: string;
   description: string;
-  instructor: string;
   lessons: number;
-  duration: number;
-  rating: number;
-  reviewsCount: number;
-  price: number;
-  isPremium: boolean;
-  level: string;
-  enrolledCount: number;
   tags: string[];
   image: string;
 }
@@ -42,40 +34,26 @@ export class CoursesComponent implements OnInit {
   itemsPerPage = 6;
 
   // ═══════════════════════════════════════════
-  // 7 COURS : Python, Algèbre, Analyse, HTML/CSS, Java, React, Angular
+  // 8 COURS : Langage C, Algèbre, Analyse, 
+  // Systèmes logiques et architecture, Algorithmes, 
+  // Base de données, Réseaux, Système d'exploitation
   // ═══════════════════════════════════════════
   allCourses: Course[] = [
     {
       id: 1,
-      title: 'Python',
+      title: 'Langage C',
       category: 'Programmation',
-      description: 'Maîtrisez Python de zéro à héros. Variables, boucles, fonctions, POO et projets concrets.',
-      instructor: 'Prof. Karim Ben Salah',
+      description: 'Apprenez les fondamentaux de la programmation en C. Syntaxe, pointeurs, structures et gestion de la mémoire.',
       lessons: 28,
-      duration: 14,
-      rating: 4.7,
-      reviewsCount: 245,
-      price: 45,
-      isPremium: true,
-      level: 'Débutant',
-      enrolledCount: 890,
-      tags: ['Bases', 'POO', 'Fichiers'],
-      image: 'python.png'
+      tags: ['Bases', 'Pointeurs', 'Mémoire'],
+      image: 'c_language.png'
     },
     {
       id: 2,
       title: 'Algèbre',
       category: 'Mathématiques',
       description: 'De l\'arithmétique à l\'algèbre généralisée. Équations, polynômes et fonctions.',
-      instructor: 'Prof. Amine Benali',
       lessons: 32,
-      duration: 16,
-      rating: 4.8,
-      reviewsCount: 198,
-      price: 55,
-      isPremium: true,
-      level: 'Débutant',
-      enrolledCount: 650,
       tags: ['Équations', 'Polynômes', 'Fonctions'],
       image: 'algebra.jpg'
     },
@@ -84,85 +62,54 @@ export class CoursesComponent implements OnInit {
       title: 'Analyse',
       category: 'Mathématiques',
       description: 'Suites numériques, limites, dérivation et intégration. Tout pour réussir vos examens.',
-      instructor: 'Prof. Sami Trabelsi',
       lessons: 30,
-      duration: 18,
-      rating: 4.6,
-      reviewsCount: 156,
-      price: 60,
-      isPremium: true,
-      level: 'Intermédiaire',
-      enrolledCount: 420,
       tags: ['Suites', 'Limites', 'Intégrales'],
       image: 'analyse.jpg'
     },
     {
       id: 4,
-      title: 'HTML & CSS',
-      category: 'Développement Web',
-      description: 'Créez des sites web modernes et responsives. Flexbox, Grid, animations et bonnes pratiques.',
-      instructor: 'Prof. Nadia Khemiri',
+      title: 'Systèmes logiques et architecture',
+      category: 'Informatique',
+      description: 'Comprenez le fonctionnement interne des ordinateurs. Algèbre de Boole, circuits combinatoires/séquentiels et architecture matérielle.',
       lessons: 24,
-      duration: 12,
-      rating: 4.9,
-      reviewsCount: 312,
-      price: 35,
-      isPremium: false,
-      level: 'Débutant',
-      enrolledCount: 1200,
-      tags: ['HTML5', 'CSS3', 'Responsive'],
-      image: 'html_css.png'
+      tags: ['Boole', 'Circuits', 'Architecture'],
+      image: 'logique_archi.png'
     },
     {
       id: 5,
-      title: 'Java',
-      category: 'Programmation',
-      description: 'Programmation orientée objet avec Java. Classes, héritage, collections et applications.',
-      instructor: 'Prof. Youssef Gharbi',
-      lessons: 35,
-      duration: 20,
-      rating: 4.5,
-      reviewsCount: 178,
-      price: 50,
-      isPremium: true,
-      level: 'Débutant',
-      enrolledCount: 560,
-      tags: ['POO', 'Collections', 'JVM'],
-      image: 'java.png'
+      title: 'Algorithmes',
+      category: 'Informatique',
+      description: 'Apprenez à concevoir et analyser des algorithmes efficaces. Complexité, tri, recherche et structures de données.',
+      lessons: 26,
+      tags: ['Complexité', 'Tri', 'Structures de données'],
+      image: 'algo.jpg'
     },
     {
       id: 6,
-      title: 'React',
-      category: 'Développement Web',
-      description: 'Construisez des interfaces dynamiques avec React. Hooks, Context API, Redux et Next.js.',
-      instructor: 'Prof. Rami Ben Ammar',
-      lessons: 26,
-      duration: 14,
-      rating: 4.8,
-      reviewsCount: 289,
-      price: 55,
-      isPremium: true,
-      level: 'Intermédiaire',
-      enrolledCount: 780,
-      tags: ['Hooks', 'Redux', 'Next.js'],
-      image: 'react.png'
+      title: 'Base de données',
+      category: 'Informatique',
+      description: 'Concevez et gérez des bases de données relationnelles. Modélisation, SQL et normalisation.',
+      lessons: 24,
+      tags: ['SQL', 'Modélisation', 'Normalisation'],
+      image: 'bdd.jpg'
     },
     {
       id: 7,
-      title: 'Angular',
-      category: 'Développement Web',
-      description: 'Framework Angular complet. Components, services, routing, RxJS et signals.',
-      instructor: 'Prof. Lina Ben Youssef',
-      lessons: 28,
-      duration: 16,
-      rating: 4.7,
-      reviewsCount: 210,
-      price: 55,
-      isPremium: true,
-      level: 'Intermédiaire',
-      enrolledCount: 640,
-      tags: ['Components', 'RxJS', 'Signals'],
-      image: 'ang.png'
+      title: 'Réseaux',
+      category: 'Informatique',
+      description: 'Comprenez le fonctionnement des réseaux informatiques. Modèle OSI, TCP/IP et protocoles courants.',
+      lessons: 22,
+      tags: ['OSI', 'TCP/IP', 'Protocoles'],
+      image: 'reseaux.jpg'
+    },
+    {
+      id: 8,
+      title: 'Système d\'exploitation',
+      category: 'Informatique',
+      description: 'Découvrez les concepts fondamentaux des systèmes d\'exploitation. Processus, mémoire et gestion des fichiers.',
+      lessons: 25,
+      tags: ['Processus', 'Mémoire', 'Fichiers'],
+      image: 'os.jpg'
     }
   ];
 
@@ -170,15 +117,13 @@ export class CoursesComponent implements OnInit {
     'Tous',
     'Programmation',
     'Mathématiques',
-    'Développement Web'
+    'Informatique'
   ]);
 
   sortOptions = [
-    { value: 'popular', label: 'Plus populaires' },
+    { value: 'popular', label: 'Plus consultés' },
     { value: 'recent', label: 'Plus récents' },
-    { value: 'price-asc', label: 'Prix croissant' },
-    { value: 'price-desc', label: 'Prix décroissant' },
-    { value: 'rating', label: 'Mieux notés' }
+    { value: 'lessons', label: 'Par nombre de leçons' }
   ];
 
   ngOnInit(): void {
@@ -209,11 +154,15 @@ export class CoursesComponent implements OnInit {
       );
     }
     switch (this.selectedSort()) {
-      case 'price-asc': result = [...result].sort((a, b) => a.price - b.price); break;
-      case 'price-desc': result = [...result].sort((a, b) => b.price - a.price); break;
-      case 'rating': result = [...result].sort((a, b) => b.rating - a.rating); break;
-      case 'recent': result = [...result].sort((a, b) => b.id - a.id); break;
-      default: result = [...result].sort((a, b) => b.enrolledCount - a.enrolledCount); break;
+      case 'lessons':
+        result = [...result].sort((a, b) => b.lessons - a.lessons);
+        break;
+      case 'recent':
+        result = [...result].sort((a, b) => b.id - a.id);
+        break;
+      default:
+        result = [...result].sort((a, b) => b.id - a.id);
+        break;
     }
     return result;
   });
@@ -262,16 +211,6 @@ export class CoursesComponent implements OnInit {
 
   viewCourse(courseId: number): void {
     this.router.navigate(['/cours', courseId]);
-  }
-
-  getStars(rating: number): string {
-    const full = Math.floor(rating);
-    const half = rating % 1 >= 0.5 ? 1 : 0;
-    return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(5 - full - half);
-  }
-
-  getPriceClass(price: number): string {
-    return price === 0 ? 'free' : '';
   }
 
   onImageError(event: Event): void {

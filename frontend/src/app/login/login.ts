@@ -343,7 +343,7 @@ export class LoginComponent implements OnDestroy {
     switch (role) {
       case 'etudiant':
       case 'student':
-        this.router.navigate(['/dashboard-etudiant']);
+        this.router.navigate(['/matiere']);
         break;
       case 'enseignant':
       case 'teacher':

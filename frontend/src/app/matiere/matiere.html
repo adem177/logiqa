@@ -1,0 +1,158 @@
+<div class="course-detail-page">
+  <!-- ============================================
+       HEADER
+       ============================================ -->
+  <header class="detail-header">
+    <button class="btn-back" (click)="goBack()">
+      <span class="back-icon">←</span>
+      Retour aux cours
+    </button>
+    <h1 class="course-title">{{ courseTitle() }}</h1>
+  </header>
+
+  <!-- ============================================
+       ONGLETS
+       ============================================ -->
+  <nav class="tabs-nav">
+    <button
+      class="tab-btn"
+      [class.active]="activeTab() === 'cours'"
+      (click)="setTab('cours')">
+      <span class="tab-icon">📖</span>
+      Cours
+    </button>
+    <button
+      class="tab-btn"
+      [class.active]="activeTab() === 'examen'"
+      (click)="setTab('examen')">
+      <span class="tab-icon">📝</span>
+      Examen
+    </button>
+  </nav>
+
+  <!-- ============================================
+       CONTENU ONGLET COURS
+       ============================================ -->
+  <div class="tab-content" *ngIf="activeTab() === 'cours'">
+    <div class="chapters-list">
+      
+      <div
+        class="chapter-card"
+        *ngFor="let chapter of chapters()">
+
+        <!-- Ligne principale -->
+        <div class="chapter-main" (click)="toggleChapter(chapter.id)">
+          <div class="chapter-toggle">
+            <span class="toggle-icon" [class.expanded]="isExpanded(chapter.id)">›</span>
+          </div>
+
+          <div class="chapter-number">{{ chapter.number }}</div>
+
+          <div class="chapter-info">
+            <h3 class="chapter-title">{{ chapter.title }}</h3>
+            <span class="chapter-resources-summary">
+              <span class="resource-chip resource-chip-video">🎬 {{ chapter.videosCount }} Vidéos</span>
+              <span class="resource-chip resource-chip-pdf">📄 {{ chapter.pdfsCount }} PDF</span>
+            </span>
+          </div>
+
+          <span class="edit-icon">✏️</span>
+        </div>
+
+        <!-- Contenu déplié : comparatif Vidéos / PDF -->
+        <div class="chapter-expanded" *ngIf="isExpanded(chapter.id)" (click)="$event.stopPropagation()">
+
+          <!-- Message d'erreur -->
+          <div class="upload-error" *ngIf="uploadError(chapter.id) as err">
+            ⚠️ {{ err }}
+          </div>
+
+          <!-- Sélecteur de type de ressource -->
+          <div class="resource-switch">
+            <button
+              class="resource-switch-btn"
+              [class.active]="getResourceView(chapter.id) === 'video'"
+              (click)="setResourceView(chapter.id, 'video')">
+              🎬 Vidéos
+              <span class="resource-switch-count">{{ chapter.videosCount }}</span>
+            </button>
+            <button
+              class="resource-switch-btn"
+              [class.active]="getResourceView(chapter.id) === 'pdf'"
+              (click)="setResourceView(chapter.id, 'pdf')">
+              📄 PDF
+              <span class="resource-switch-count">{{ chapter.pdfsCount }}</span>
+            </button>
+          </div>
+
+          <!-- Liste des vidéos -->
+          <div class="resource-list" *ngIf="getResourceView(chapter.id) === 'video'">
+            <div
+              class="resource-item resource-item-video"
+              *ngFor="let v of buildRange(chapter.videosCount); let i = index">
+              <a
+                class="resource-item-link"
+                [href]="getVideoUrl(chapter, i)"
+                target="_blank"
+                rel="noopener noreferrer"
+                (click)="$event.stopPropagation()">
+                <span class="resource-icon">▶</span>
+                <span class="resource-name">{{ getVideoName(chapter.id, i) }}</span>
+                <span class="resource-meta">Regarder ↗</span>
+              </a>
+              <button
+                class="resource-delete"
+                (click)="deleteResource(chapter.id, 'video', i); $event.stopPropagation()"
+                title="Supprimer">
+                🗑️
+              </button>
+            </div>
+            <div class="resource-empty" *ngIf="chapter.videosCount === 0">
+              Aucune vidéo pour l'instant.
+            </div>
+          </div>
+
+          <!-- Liste des PDF -->
+          <div class="resource-list" *ngIf="getResourceView(chapter.id) === 'pdf'">
+            <div
+              class="resource-item resource-item-pdf"
+              *ngFor="let p of buildRange(chapter.pdfsCount); let i = index">
+              <a
+                class="resource-item-link"
+                [href]="getPdfUrl(chapter, i)"
+                target="_blank"
+                rel="noopener noreferrer"
+                (click)="$event.stopPropagation()">
+                <span class="resource-icon">📄</span>
+                <span class="resource-name">{{ getPdfName(chapter.id, i) }}</span>
+                <span class="resource-meta">Ouvrir ↗</span>
+              </a>
+              <button
+                class="resource-delete"
+                (click)="deleteResource(chapter.id, 'pdf', i); $event.stopPropagation()"
+                title="Supprimer">
+                🗑️
+              </button>
+            </div>
+            <div class="resource-empty" *ngIf="chapter.pdfsCount === 0">
+              Aucun PDF pour l'instant.
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================
+       CONTENU ONGLET EXAMEN
+       ============================================ -->
+  <div class="tab-content" *ngIf="activeTab() === 'examen'">
+    <div class="examen-placeholder">
+      <span class="examen-icon">📝</span>
+      <h2>Examen à venir</h2>
+      <p>Les examens seront disponibles prochainement.</p>
+    </div>
+  </div>
+</div>

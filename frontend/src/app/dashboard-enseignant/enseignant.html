@@ -4,32 +4,46 @@
     LOGIQA
     <span class="role-badge">ESPACE ENSEIGNANT</span>
   </div>
-  <button class="home-btn" (click)="goHome()" title="Retour à l'accueil">⌂</button>
+
+  <div class="topbar-actions">
+    <!-- MENU PROFILE DÉROULANT -->
+    <div class="profile-dropdown" [class.open]="isProfileOpen">
+      <button class="profile-toggle" (click)="toggleProfile($event)" type="button">
+        <span class="profile-avatar">{{ teacherInitials }}</span>
+        <span class="profile-name">{{ teacherName }}</span>
+        <span class="arrow">▾</span>
+      </button>
+
+      <div class="profile-menu" *ngIf="isProfileOpen">
+        <div class="profile-menu-header">
+          <span class="profile-avatar large">{{ teacherInitials }}</span>
+          <div>
+            <div class="profile-menu-name">{{ teacherName }} {{ teacherLastName }}</div>
+            <div class="profile-menu-email">{{ teacherEmail }}</div>
+          </div>
+        </div>
+        <a routerLink="/enseignant/profil" (click)="closeProfile()">Mon profil</a>
+      </div>
+    </div>
+
+    <button class="home-btn" (click)="goHome()" title="Retour à l'accueil" type="button">⌂</button>
+  </div>
 </header>
 
 <main>
   <div class="top-row">
-    <div>
+    <div class="welcome-section">
       <div class="welcome">Bienvenue professeur {{ teacherName }} 👨‍🏫</div>
       <h1>Votre tableau de bord</h1>
-    </div>
-
-    <div class="progress-widget">
-      <div 
-        class="progress-ring"
-        [style.background]="'conic-gradient(#4f46e5 ' + progressStrokeDeg + 'deg, #e5e9f0 0deg)'">
-        <span>{{ completionRate }}%</span>
-      </div>
-      <div class="progress-label">Taux de<br>complétion des cours</div>
     </div>
   </div>
 
   <!-- STATISTIQUES -->
   <div class="stats-grid">
-    @for (stat of stats; track stat.title) {
+    @for (stat of stats(); track stat.title) {
       <div class="stat-card">
         <div class="stat-icon" [ngClass]="stat.iconClass">{{ stat.icon }}</div>
-        <div>
+        <div class="stat-content">
           <div class="stat-value">{{ stat.value }}</div>
           <div class="stat-title">{{ stat.title }}</div>
           <div class="stat-sub" [class.muted]="stat.subMuted">{{ stat.sub }}</div>
@@ -40,40 +54,39 @@
 
   <!-- PANNEAUX COURS & ACTIVITÉ -->
   <div class="panels">
-    
+
     <!-- SECTION MES COURS -->
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">Mes cours</div>
         <div class="panel-actions">
-          @if (courses.length > 0) {
-            <button class="cta-btn-sm" (click)="onCreateCourse()">+ Créer un cours</button>
+          @if (courses().length > 0) {
+            <button class="cta-btn-sm" (click)="onCreateCourse()" type="button">+ Créer un cours</button>
             <a routerLink="/cours" class="link-btn">Voir tout</a>
           }
         </div>
       </div>
 
       <!-- État vide -->
-      @if (courses.length === 0) {
+      @if (courses().length === 0) {
         <div class="empty-state">
           <div class="empty-emoji">📚</div>
           <div class="empty-title">Aucun cours publié</div>
           <div class="empty-text">
             Partagez votre savoir-faire et créez votre première formation dès aujourd'hui.
           </div>
-          <button class="cta-btn" (click)="onCreateCourse()">Créer un cours</button>
+          <button class="cta-btn" (click)="onCreateCourse()" type="button">Créer un cours</button>
         </div>
       }
 
       <!-- Liste des cours -->
-      @if (courses.length > 0) {
+      @if (courses().length > 0) {
         <div class="course-list">
-          @for (course of courses; track course.id) {
+          @for (course of courses(); track course.id) {
             <div class="course-row">
               <img [src]="course.thumbnail" [alt]="course.title" class="course-thumb">
-              <div>
+              <div class="course-info">
                 <div class="course-title">{{ course.title }}</div>
-                <div class="course-meta">{{ course.studentsCount }} étudiant(s)</div>
               </div>
             </div>
           }

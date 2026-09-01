@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
-import { CommonModule, NgClass } from '@angular/common';
+import { Component, inject, computed, ElementRef, HostListener } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
+import { CourseService } from '../services/course.service';
 
 interface StatCard {
   icon: string;
@@ -9,13 +10,6 @@ interface StatCard {
   title: string;
   sub: string;
   subMuted?: boolean;
-}
-
-interface Course {
-  id: number;
-  title: string;
-  studentsCount: number;
-  thumbnail: string;
 }
 
 interface ActivityItem {
@@ -33,58 +27,71 @@ interface ActivityItem {
 })
 export class TeacherDashboardComponent {
   private router = inject(Router);
+  private courseService = inject(CourseService);
+  private elementRef = inject(ElementRef);
 
   teacherName = 'Adem';
-  completionRate = 0; // 0-100
+  teacherLastName = 'Ben Ali';
+  teacherEmail = 'adem.benali@example.com';
+  teacherId = 1;
 
-  stats: StatCard[] = [
-    {
-      icon: '📘',
-      iconClass: 'icon-blue',
-      value: '0',
-      title: 'Cours publiés',
-      sub: 'Aucun pour le moment'
-    },
-    {
-      icon: '👥',
-      iconClass: 'icon-purple',
-      value: '0',
-      title: 'Étudiants inscrits',
-      sub: 'Commencez à enseigner'
-    },
-    {
-      icon: '⏱️',
-      iconClass: 'icon-amber',
-      value: '0',
-      title: 'Heures enseignées',
-      sub: 'Aucune donnée'
-    },
-    {
-      icon: '⭐',
-      iconClass: 'icon-green',
-      value: '—',
-      title: 'Note moyenne',
-      sub: 'Pas encore évalué',
-      subMuted: true
-    }
-  ];
+  isProfileOpen = false;
 
-  // Remplacer par un appel à un service (HTTP) qui récupère les vrais cours
-  courses: Course[] = [];
-
-  // Remplacer par un appel à un service qui récupère l'activité réelle
-  activities: ActivityItem[] = [];
-
-  get progressStrokeDeg(): number {
-    return (this.completionRate / 100) * 360;
+  get teacherInitials(): string {
+    const firstInitial = this.teacherName ? this.teacherName[0] : '';
+    const lastInitial = this.teacherLastName ? this.teacherLastName[0] : '';
+    return (firstInitial + lastInitial).toUpperCase();
   }
 
-  // Redirection vers le formulaire d'upload de cours
+  toggleProfile(event?: MouseEvent): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.isProfileOpen = !this.isProfileOpen;
+  }
+
+  closeProfile(): void {
+    this.isProfileOpen = false;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    // Ferme le menu de profil uniquement si le clic a lieu hors du composant
+    if (!this.elementRef.nativeElement.contains(event.target)) {
+      this.isProfileOpen = false;
+    }
+  }
+
+  courses = computed(() => this.courseService.getCoursesByTeacher(this.teacherId));
+  teachersCount = 25;
+
+  stats = computed<StatCard[]>(() => {
+    const myCourses = this.courses();
+
+    return [
+      {
+        icon: '📘',
+        iconClass: 'icon-blue',
+        value: String(myCourses.length),
+        title: 'Cours publiés',
+        sub: myCourses.length === 0 ? 'Aucun pour le moment' : `${myCourses.length} cours actif(s)`
+      },
+      {
+        icon: '🧑‍🏫',
+        iconClass: 'icon-purple',
+        value: String(this.teachersCount),
+        title: 'Enseignants',
+        sub: `${this.teachersCount} sur la plateforme`
+      }
+    ];
+  });
+
+  activities: ActivityItem[] = [];
+
   onCreateCourse(): void {
     this.router.navigate(['/enseignant/upload-cours']);
   }
 
-  // Redirection vers l'accueil ou la liste générale
   goHome(): void {
     this.router.navigate(['/']);
   }

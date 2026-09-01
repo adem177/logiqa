@@ -2,17 +2,19 @@ import re
 import logging
 import secrets
 import threading
-from init_db import seed_admin, init_database
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import bcrypt
-import jwt
 import os
 import uuid
 import hashlib
 from datetime import datetime, timedelta, timezone
-from dotenv import load_dotenv
 from functools import wraps
+
+from init_db import seed_admin, init_database
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from werkzeug.utils import secure_filename
+import bcrypt
+import jwt
+from dotenv import load_dotenv
 from db import get_connection
 import smtplib
 from email.mime.text import MIMEText
@@ -29,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# ===== CORS CORRIGÉ =====
+# ===== CORS =====
 CORS(app, resources={
     r"/api/*": {
         "origins": ["http://localhost:4200", "http://127.0.0.1:4200"],
@@ -51,6 +53,24 @@ NIVEAUX_VALIDES = ['Débutant', 'Intermédiaire', 'Avancé']
 
 MAX_FIELD_LENGTH = 200
 MAX_DESCRIPTION_LENGTH = 5000
+
+# ===== UPLOAD CONFIG =====
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_ROOT = os.path.join(BASE_DIR, 'public')
+UPLOAD_VIDEOS_DIR = os.path.join(UPLOAD_ROOT, 'videos')
+UPLOAD_PDFS_DIR = os.path.join(UPLOAD_ROOT, 'pdfs')
+os.makedirs(UPLOAD_VIDEOS_DIR, exist_ok=True)
+os.makedirs(UPLOAD_PDFS_DIR, exist_ok=True)
+
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov', 'avi', 'mkv'}
+ALLOWED_PDF_EXTENSIONS = {'pdf'}
+MAX_VIDEO_SIZE = 500 * 1024 * 1024  # 500 Mo
+MAX_PDF_SIZE = 20 * 1024 * 1024     # 20 Mo
+
+
+def allowed_extension(filename, allowed_set):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_set
+
 
 # ===== RATE LIMITING EN BASE =====
 def is_rate_limited_db(cursor, key, max_attempts=5, window_sec=300):
@@ -82,7 +102,6 @@ def contains_suspicious_html(text):
     return bool(re.search(r'<[^>]*>', text)) if text else False
 
 def generate_otp():
-    # secrets.randbelow est cryptographiquement sûr, contrairement à random.randint
     return str(secrets.randbelow(900000) + 100000)
 
 def send_otp_email(to_email, code):
@@ -105,6 +124,31 @@ def send_otp_email(to_email, code):
         return True
     except Exception:
         logger.exception(f"Erreur envoi email à {to_email}")
+        return False
+
+def send_reset_password_email(to_email, reset_link):
+    if not EMAIL_ADDRESS or not EMAIL_APP_PASSWORD:
+        logger.warning("Credentials email manquants, envoi de réinitialisation annulé")
+        return False
+    try:
+        msg = MIMEText(
+            f"Bonjour,\n\n"
+            f"Vous avez demandé la réinitialisation de votre mot de passe pour votre compte LOGIQA.\n"
+            f"Cliquez sur le lien ci-dessous pour créer un nouveau mot de passe :\n\n"
+            f"{reset_link}\n\n"
+            f"Ce lien expire dans 15 minutes.\n"
+            f"Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail."
+        )
+        msg['Subject'] = 'Réinitialisation de votre mot de passe - LOGIQA'
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = to_email
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10) as server:
+            server.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
+            server.send_message(msg)
+        return True
+    except Exception:
+        logger.exception(f"Erreur envoi email de réinitialisation à {to_email}")
         return False
 
 def create_token_response(user, cursor, conn):
@@ -174,7 +218,6 @@ def register():
     try:
         cursor = conn.cursor()
 
-        # Rate limiting sur les créations de compte (anti-spam)
         if is_rate_limited_db(cursor, f"register:{email}", max_attempts=5, window_sec=600):
             return jsonify({"error": "Trop de tentatives. Réessayez plus tard."}), 429
 
@@ -269,6 +312,110 @@ def login():
     finally:
         conn.close()
 
+# ===== DEMANDE DE RÉINITIALISATION DE MOT DE PASSE =====
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    if not request.is_json:
+        return jsonify({"error": "Content-Type application/json requis."}), 400
+
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+
+    if not email or not is_valid_email(email):
+        return jsonify({"error": "Adresse email invalide."}), 400
+
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+
+        if is_rate_limited_db(cursor, f"forgot:{email}", max_attempts=3, window_sec=600):
+            return jsonify({"error": "Trop de demandes. Réessayez dans 10 minutes."}), 429
+
+        cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+
+        record_attempt_db(cursor, conn, f"forgot:{email}")
+
+        if user:
+            raw_token = secrets.token_urlsafe(32)
+            token_hash = hash_token(raw_token)  # ← on ne stocke jamais le token en clair
+            expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+
+            cursor.execute(
+                """INSERT INTO otp_codes (user_id, code, expires_at, attempts)
+                   VALUES (%s, %s, %s, 0)
+                   ON DUPLICATE KEY UPDATE code=%s, expires_at=%s, attempts=0""",
+                (user['id'], token_hash, expires.replace(tzinfo=None), token_hash, expires.replace(tzinfo=None))
+            )
+            conn.commit()
+
+            # Le lien envoyé par email contient le token EN CLAIR ; seule sa version hachée est en base.
+            reset_url = f"http://localhost:4200/reset-password?token={raw_token}&user_id={user['id']}"
+
+            threading.Thread(target=send_reset_password_email, args=(email, reset_url), daemon=True).start()
+
+        return jsonify({"success": True, "message": "Si l'adresse existe, un lien de réinitialisation a été envoyé."})
+
+    except Exception:
+        logger.exception("Erreur forgot-password")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+# ===== VALIDATION ET MISE À JOUR DU MOT DE PASSE =====
+@app.route('/api/reset-password', methods=['POST'])
+def reset_password():
+    if not request.is_json:
+        return jsonify({"error": "Content-Type application/json requis."}), 400
+
+    data = request.get_json() or {}
+    user_id = data.get('user_id')
+    token = data.get('token', '').strip()
+    new_password = data.get('password', '')
+
+    if not user_id or not token or not new_password:
+        return jsonify({"error": "Champs manquants."}), 400
+
+    if not is_valid_password(new_password):
+        return jsonify({"error": "Le mot de passe doit contenir au moins 8 caractères, une lettre et un chiffre."}), 400
+
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT code, expires_at FROM otp_codes WHERE user_id = %s", (user_id,))
+        entry = cursor.fetchone()
+
+        # On compare le hash du token reçu au hash stocké, jamais le token en clair.
+        if not entry or entry['code'] != hash_token(token):
+            return jsonify({"error": "Lien invalide ou expiré."}), 400
+
+        if datetime.now(timezone.utc) > entry['expires_at'].replace(tzinfo=timezone.utc):
+            cursor.execute("DELETE FROM otp_codes WHERE user_id = %s", (user_id,))
+            conn.commit()
+            return jsonify({"error": "Le lien a expiré. Veuillez refaire une demande."}), 400
+
+        hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        cursor.execute("UPDATE users SET password = %s WHERE id = %s", (hashed_pw, user_id))
+        cursor.execute("DELETE FROM otp_codes WHERE user_id = %s", (user_id,))
+        cursor.execute("UPDATE sessions SET revoked = TRUE WHERE user_id = %s", (user_id,))
+
+        conn.commit()
+
+        return jsonify({"success": True, "message": "Mot de passe modifié avec succès. Vous pouvez vous connecter."})
+
+    except Exception:
+        logger.exception("Erreur reset-password")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
 # ===== RENVOYER OTP =====
 @app.route('/api/resend-email', methods=['POST'])
 def resend_email():
@@ -289,7 +436,6 @@ def resend_email():
     try:
         cursor = conn.cursor()
 
-        # Rate limiting sur le renvoi d'OTP (anti-spam email)
         if is_rate_limited_db(cursor, f"resend:{email}", max_attempts=5, window_sec=600):
             return jsonify({"error": "Trop de tentatives. Réessayez plus tard."}), 429
 
@@ -428,6 +574,17 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
+def enseignant_required(f):
+    """À utiliser APRÈS @token_required : vérifie que l'utilisateur a le rôle enseignant."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.user.get('role') != 'enseignant':
+            return jsonify({"error": "Action réservée aux enseignants."}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
 @app.route('/api/logout', methods=['POST'])
 @token_required
 def logout():
@@ -451,7 +608,6 @@ def me():
     return jsonify({"user": request.user})
 
 # ===== COURS (CRUD) =====
-
 @app.route('/api/cours', methods=['GET'])
 def get_cours():
     conn = get_connection()
@@ -468,7 +624,6 @@ def get_cours():
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
         conn.close()
-
 
 @app.route('/api/cours/<int:cours_id>', methods=['GET'])
 def get_cours_by_id(cours_id):
@@ -492,9 +647,9 @@ def get_cours_by_id(cours_id):
     finally:
         conn.close()
 
-
 @app.route('/api/cours', methods=['POST'])
 @token_required
+@enseignant_required
 def create_cours():
     data = request.get_json() or {}
     titre = data.get('titre', '').strip()
@@ -539,9 +694,9 @@ def create_cours():
     finally:
         conn.close()
 
-
 @app.route('/api/cours/<int:cours_id>', methods=['PUT'])
 @token_required
+@enseignant_required
 def update_cours(cours_id):
     data = request.get_json() or {}
     titre = data.get('titre', '').strip()
@@ -588,9 +743,9 @@ def update_cours(cours_id):
     finally:
         conn.close()
 
-
 @app.route('/api/cours/<int:cours_id>', methods=['DELETE'])
 @token_required
+@enseignant_required
 def delete_cours(cours_id):
     conn = get_connection()
     if not conn:
@@ -615,8 +770,173 @@ def delete_cours(cours_id):
     finally:
         conn.close()
 
+# ===== CHAPITRES : UPLOAD ET SUPPRESSION DE RESSOURCES =====
+@app.route('/api/chapitres/<int:chapitre_id>/upload', methods=['POST'])
+@token_required
+@enseignant_required
+def upload_ressource(chapitre_id):
+    if 'fichier' not in request.files:
+        return jsonify({"error": "Aucun fichier reçu."}), 400
 
-# ===== PURGE SESSIONS =====
+    file = request.files['fichier']
+    resource_type = request.form.get('type', '').strip()
+
+    if resource_type not in ('video', 'pdf'):
+        return jsonify({"error": "Type de ressource invalide."}), 400
+
+    if file.filename == '':
+        return jsonify({"error": "Nom de fichier vide."}), 400
+
+    original_name = secure_filename(file.filename)
+
+    if resource_type == 'pdf':
+        if not allowed_extension(original_name, ALLOWED_PDF_EXTENSIONS):
+            return jsonify({"error": "Le fichier doit être un PDF."}), 400
+        target_dir = UPLOAD_PDFS_DIR
+        max_size = MAX_PDF_SIZE
+        max_label = '20 Mo'
+    else:
+        if not allowed_extension(original_name, ALLOWED_VIDEO_EXTENSIONS):
+            return jsonify({"error": "Le fichier doit être une vidéo."}), 400
+        target_dir = UPLOAD_VIDEOS_DIR
+        max_size = MAX_VIDEO_SIZE
+        max_label = '500 Mo'
+
+    # Vérification de la taille réelle du fichier reçu
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    if file_size > max_size:
+        return jsonify({"error": f"Le fichier dépasse la limite de {max_label}."}), 400
+
+    ext = original_name.rsplit('.', 1)[1].lower()
+    stored_name = f"{uuid.uuid4().hex}.{ext}"
+    file_path = os.path.join(target_dir, stored_name)
+
+    try:
+        file.save(file_path)
+    except Exception:
+        logger.exception("Erreur sauvegarde fichier")
+        return jsonify({"error": "Erreur lors de l'enregistrement du fichier."}), 500
+
+    conn = get_connection()
+    if not conn:
+        # Nettoyage du fichier orphelin si la BD est indisponible
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """INSERT INTO chapitre_ressources
+               (chapitre_id, type, nom_original, nom_fichier, enseignant_id)
+               VALUES (%s, %s, %s, %s, %s)""",
+            (chapitre_id, resource_type, original_name, stored_name, request.user['id'])
+        )
+        conn.commit()
+        new_id = cursor.lastrowid
+
+        return jsonify({
+            "success": True,
+            "id": new_id,
+            "type": resource_type,
+            "nomOriginal": original_name,
+            "url": f"/public/{resource_type}s/{stored_name}"
+        })
+    except Exception:
+        logger.exception("Erreur insertion ressource")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/chapitres/<int:chapitre_id>/resources', methods=['GET'])
+@token_required
+def list_ressources(chapitre_id):
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT id, type, nom_original, nom_fichier, created_at
+               FROM chapitre_ressources
+               WHERE chapitre_id = %s
+               ORDER BY type, id ASC""",
+            (chapitre_id,)
+        )
+        rows = cursor.fetchall()
+        for r in rows:
+            r['url'] = f"/public/{r['type']}s/{r['nom_fichier']}"
+        return jsonify(rows)
+    except Exception:
+        logger.exception("Erreur récupération ressources")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/chapitres/<int:chapitre_id>/resources/<string:resource_type>/<int:index>', methods=['DELETE'])
+@token_required
+@enseignant_required
+def delete_ressource(chapitre_id, resource_type, index):
+    if resource_type not in ('video', 'pdf'):
+        return jsonify({"error": "Type de ressource invalide."}), 400
+
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT id, nom_fichier, enseignant_id FROM chapitre_ressources
+               WHERE chapitre_id = %s AND type = %s
+               ORDER BY id ASC""",
+            (chapitre_id, resource_type)
+        )
+        rows = cursor.fetchall()
+
+        if index < 0 or index >= len(rows):
+            return jsonify({"error": "Ressource introuvable."}), 404
+
+        resource = rows[index]
+
+        if resource['enseignant_id'] != request.user['id']:
+            return jsonify({"error": "Action non autorisée."}), 403
+
+        cursor.execute("DELETE FROM chapitre_ressources WHERE id = %s", (resource['id'],))
+        conn.commit()
+
+        target_dir = UPLOAD_PDFS_DIR if resource_type == 'pdf' else UPLOAD_VIDEOS_DIR
+        file_path = os.path.join(target_dir, resource['nom_fichier'])
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        return jsonify({"success": True, "message": "Fichier supprimé."})
+    except Exception:
+        logger.exception("Erreur suppression ressource")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/public/<string:resource_type>/<path:filename>', methods=['GET'])
+def serve_uploaded_file(resource_type, filename):
+    if resource_type == 'pdfs':
+        directory = UPLOAD_PDFS_DIR
+    elif resource_type == 'videos':
+        directory = UPLOAD_VIDEOS_DIR
+    else:
+        return jsonify({"error": "Type de ressource invalide."}), 404
+    return send_from_directory(directory, filename)
+
+
+# ===== PURGE PÉRIODIQUE =====
 def purge_expired_sessions():
     conn = get_connection()
     if conn:
@@ -627,12 +947,28 @@ def purge_expired_sessions():
         finally:
             conn.close()
 
+def purge_old_security_records():
+    """Nettoie les OTP/tokens expirés et les tentatives de connexion anciennes."""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM otp_codes WHERE expires_at < NOW()")
+        cursor.execute("DELETE FROM login_attempts WHERE attempted_at < NOW() - INTERVAL 1 DAY")
+        conn.commit()
+    except Exception:
+        logger.exception("Erreur purge sécurité")
+    finally:
+        conn.close()
+
 # ===== DÉMARRAGE =====
 if __name__ == '__main__':
     if not init_database():
         raise SystemExit(1)
 
     purge_expired_sessions()
+    purge_old_security_records()
 
     port = int(os.getenv('PORT', 3000))
     app.run(host='0.0.0.0', debug=False, port=port)
