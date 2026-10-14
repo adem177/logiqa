@@ -1,223 +1,285 @@
-<div class="login-wrapper">
-  <div class="login-card">
-    <!-- Brand -->
-    <div class="brand">
-      <h3>📚 LOGIQA</h3>
-      <span class="brand-tag">Plateforme E-Learning</span>
-    </div>
+<div class="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-gradient-to-br from-[#eef2ff] via-[#f3f3fb] to-[#f5f0ff] px-4 pb-6 pt-16">
 
-    <!-- Titre -->
-    <h1>Créer un compte</h1>
-    <p class="subtitle">Rejoignez la communauté LOGIQA</p>
+  <!-- Halos décoratifs indigo / violet -->
+  <span aria-hidden="true" class="pointer-events-none absolute -left-40 -top-40 h-[420px] w-[420px] rounded-full bg-[#6366f1]/20 blur-3xl"></span>
+  <span aria-hidden="true" class="pointer-events-none absolute -bottom-48 -right-32 h-[480px] w-[480px] rounded-full bg-[#8b5cf6]/20 blur-3xl"></span>
+  <span aria-hidden="true" class="pointer-events-none absolute left-1/2 top-6 h-64 w-64 -translate-x-1/2 rounded-full bg-[#a5b4fc]/30 blur-3xl"></span>
 
-    <!-- Sélection du rôle -->
-    <div class="role-selection">
-      <label class="role-label">👤 Vous êtes :</label>
-      <div class="role-buttons">
-        <button 
-          type="button" 
-          class="role-btn" 
-          [class.active]="role() === 'etudiant'" 
-          (click)="setRole('etudiant')">
-          <span class="role-icon">🎓</span>
-          Étudiant
-          <span *ngIf="role() === 'etudiant'" class="check-mark">✅</span>
-        </button>
-        <button 
-          type="button" 
-          class="role-btn" 
-          [class.active]="role() === 'enseignant'" 
-          (click)="setRole('enseignant')">
-          <span class="role-icon">👨‍🏫</span>
-          Enseignant
-          <span *ngIf="role() === 'enseignant'" class="check-mark">✅</span>
-        </button>
+  <div class="relative z-10 grid w-full max-w-[1000px] overflow-hidden rounded-[28px] bg-white shadow-[0_45px_100px_-30px_rgba(79,70,229,0.45)] ring-1 ring-white/70 md:grid-cols-2">
+
+    <!-- ===== Panneau gauche : univers LOGIQA ===== -->
+    <aside class="relative flex flex-col overflow-hidden bg-[#6366f1] px-6 py-6 sm:px-9">
+      <span class="pointer-events-none absolute -left-16 -top-16 h-56 w-56 rounded-full bg-white/10"></span>
+      <span class="pointer-events-none absolute -bottom-24 -right-16 h-64 w-64 rounded-full bg-white/10"></span>
+      <span class="pointer-events-none absolute bottom-14 left-4 h-24 w-24 rotate-12 rounded-[26px] bg-white/5"></span>
+
+      <div class="relative z-10">
+        <h3 class="flex items-center gap-2 text-2xl font-extrabold tracking-wide text-white"><i class="bi bi-book text-[20px] opacity-90" aria-hidden="true"></i>LOGIQA</h3>
+        <span class="mt-1 block text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75">Plateforme E-Learning</span>
       </div>
-    </div>
 
-    <!-- Messages d'erreur et succès -->
-    <div class="error-msg" *ngIf="errorVisible">
-      ⚠️ {{ errorMessage }}
-    </div>
+      <!-- Illustration décorative -->
+      <div class="relative z-10 flex flex-1 items-center justify-center py-5">
+        <svg viewBox="0 0 300 330" class="w-full max-w-[180px]" aria-hidden="true">
+          <path d="M14 296 H286" stroke="rgba(255,255,255,0.45)" stroke-width="3" stroke-linecap="round" />
+          <path d="M36 296 C36 258 62 240 94 244 C82 272 62 288 36 296 Z" fill="rgba(255,255,255,0.35)" />
+          <path d="M56 296 C58 274 74 262 96 264 C88 282 76 291 56 296 Z" fill="rgba(255,255,255,0.6)" />
+          <rect x="84" y="26" width="142" height="270" rx="26" fill="#ffffff" />
+          <rect x="94" y="40" width="122" height="242" rx="18" fill="#f4f5f7" />
+          <rect x="140" y="33" width="30" height="6" rx="3" fill="#e3e6ec" />
+          <rect x="110" y="66" width="90" height="72" rx="12" fill="#ffffff" stroke="#e3e6ec" stroke-width="2" />
+          <circle cx="138" cy="102" r="14" fill="#c7c9f7" />
+          <circle cx="155" cy="102" r="14" fill="#8b8cf0" />
+          <circle cx="172" cy="102" r="14" fill="#6366f1" />
+          <circle cx="122" cy="168" r="5" fill="#6366f1" />
+          <rect x="136" y="165" width="70" height="6" rx="3" fill="#c7c9f7" />
+          <circle cx="122" cy="192" r="5" fill="#6366f1" />
+          <rect x="136" y="189" width="52" height="6" rx="3" fill="#c7c9f7" />
+          <rect x="138" y="226" width="66" height="26" rx="9" fill="#6366f1" />
+          <circle cx="252" cy="78" r="11" fill="rgba(255,255,255,0.5)" />
+          <circle cx="44" cy="132" r="7" fill="rgba(255,255,255,0.45)" />
+          <circle cx="258" cy="212" r="6" fill="rgba(255,255,255,0.35)" />
+        </svg>
+      </div>
+    </aside>
 
-    <div class="success-msg" *ngIf="successVisible">
-      ✅ Compte créé avec succès ! Redirection vers la connexion...
-    </div>
+    <!-- ===== Panneau droit : formulaire ===== -->
+    <section class="flex flex-col justify-center bg-[#f4f5f7] px-5 py-6 sm:px-9 sm:py-7">
+      <h1 class="text-center text-[22px] font-extrabold uppercase tracking-[0.06em] text-[#1a1a2e]">Créer un compte</h1>
+      <p class="mb-4 mt-0.5 text-center text-[13px] text-slate-500">Rejoignez la communauté LOGIQA</p>
 
-    <!-- Formulaire -->
-    <form (ngSubmit)="validerInscription()" *ngIf="!successVisible">
-      
-      <!-- Prénom et Nom -->
-      <div class="row-2">
-        <div class="input-group">
-          <label for="prenom">Prénom <span class="required">*</span></label>
-          <input
-            id="prenom"
-            type="text"
-            [(ngModel)]="prenom"
-            name="prenom"
-            placeholder="Votre prénom"
-            (blur)="validatePrenom()"
-            [class.invalid]="touched.prenom && fieldErrors.prenom"
-            [class.valid]="touched.prenom && !fieldErrors.prenom && prenom"
-            required
-          />
-          <span class="field-error" *ngIf="touched.prenom && fieldErrors.prenom">
-            {{ fieldErrors.prenom }}
-          </span>
-        </div>
-
-        <div class="input-group">
-          <label for="nom">Nom <span class="required">*</span></label>
-          <input
-            id="nom"
-            type="text"
-            [(ngModel)]="nom"
-            name="nom"
-            placeholder="Votre nom"
-            (blur)="validateNom()"
-            [class.invalid]="touched.nom && fieldErrors.nom"
-            [class.valid]="touched.nom && !fieldErrors.nom && nom"
-            required
-          />
-          <span class="field-error" *ngIf="touched.nom && fieldErrors.nom">
-            {{ fieldErrors.nom }}
-          </span>
+      <!-- Sélection du rôle -->
+      <div class="mb-3.5">
+        <span class="auth-label flex items-center gap-1.5"><i class="bi bi-person text-[13px]" aria-hidden="true"></i>Vous êtes :</span>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            class="role-btn"
+            [class.is-active]="role() === 'etudiant'"
+            (click)="setRole('etudiant')">
+            <i class="bi bi-mortarboard text-[15px]" aria-hidden="true"></i>
+            Étudiant
+            <i *ngIf="role() === 'etudiant'" class="bi bi-check-circle-fill text-[12px]" aria-hidden="true"></i>
+          </button>
+          <button
+            type="button"
+            class="role-btn"
+            [class.is-active]="role() === 'enseignant'"
+            (click)="setRole('enseignant')">
+            <i class="bi bi-person-workspace text-[15px]" aria-hidden="true"></i>
+            Enseignant
+            <i *ngIf="role() === 'enseignant'" class="bi bi-check-circle-fill text-[12px]" aria-hidden="true"></i>
+          </button>
+          <button
+            type="button"
+            class="role-btn"
+            [class.is-active]="role() === 'admin'"
+            (click)="setRole('admin')">
+            <i class="bi bi-shield-lock text-[15px]" aria-hidden="true"></i>
+            Admin
+            <i *ngIf="role() === 'admin'" class="bi bi-check-circle-fill text-[12px]" aria-hidden="true"></i>
+          </button>
         </div>
       </div>
 
-      <!-- Email -->
-      <div class="input-group">
-        <label for="email">Email <span class="required">*</span></label>
-        <input
-          id="email"
-          type="email"
-          [(ngModel)]="email"
-          name="email"
-          placeholder="exemple@email.com"
-          (blur)="validateEmail()"
-          [class.invalid]="touched.email && fieldErrors.email"
-          [class.valid]="touched.email && !fieldErrors.email && email"
-          required
-        />
-        <span class="field-error" *ngIf="touched.email && fieldErrors.email">
-          {{ fieldErrors.email }}
-        </span>
+      <!-- Messages d'erreur et succès -->
+      <div *ngIf="errorVisible()"
+           class="mb-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[13px] font-medium leading-snug text-red-600">
+        <i class="bi bi-exclamation-triangle-fill mt-0.5" aria-hidden="true"></i> {{ errorMessage() }}
       </div>
 
-      <!-- Téléphone avec formatage -->
-      <div class="input-group">
-        <label for="telephone">Téléphone <span class="optional">(optionnel)</span></label>
-        <div class="phone-input-wrapper">
-          <span class="phone-prefix">🇹🇳 +216</span>
-          <input
-            id="telephone"
-            type="tel"
-            [(ngModel)]="telephone"
-            name="telephone"
-            placeholder="00 000 000"
-            maxlength="11"
-            (input)="formatPhoneNumber()"
-          />
-        </div>
-        <small class="input-help">Format : 00 000 000 (8 chiffres)</small>
+      <div *ngIf="successVisible()"
+           class="mb-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[13px] font-medium leading-snug text-emerald-700">
+        <i class="bi bi-check-circle-fill mt-0.5" aria-hidden="true"></i> Compte créé avec succès ! Redirection vers la connexion...
       </div>
 
-      <!-- Mot de passe et Confirmation -->
-      <div class="row-2">
-        <div class="input-group">
-          <label for="password">Mot de passe <span class="required">*</span></label>
-          <div class="password-wrapper">
+      <!-- Formulaire -->
+      <form (ngSubmit)="validerInscription()" *ngIf="!successVisible()" class="space-y-3">
+
+        <!-- Prénom et Nom -->
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label for="prenom" class="auth-label">Prénom <span class="text-red-500">*</span></label>
             <input
-              id="password"
-              [type]="showPassword ? 'text' : 'password'"
-              [(ngModel)]="password"
-              name="password"
-              placeholder="8 caractères min."
-              (blur)="validatePassword()"
-              [class.invalid]="touched.password && fieldErrors.password"
-              [class.valid]="touched.password && !fieldErrors.password && password"
+              id="prenom"
+              type="text"
+              [(ngModel)]="prenom"
+              name="prenom"
+              placeholder="Votre prénom"
+              (blur)="validatePrenom()"
+              [class.invalid]="touched.prenom && fieldErrors.prenom"
+              [class.valid]="touched.prenom && !fieldErrors.prenom && prenom"
+              class="auth-input"
               required
             />
-            <button 
-              type="button" 
-              class="toggle-password"
-              (click)="showPassword = !showPassword"
-              [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
-              {{ showPassword ? '🙈' : '👁️' }}
-            </button>
+            <span class="mt-1 block text-[11.5px] font-medium text-red-500" *ngIf="touched.prenom && fieldErrors.prenom">
+              {{ fieldErrors.prenom }}
+            </span>
           </div>
-          <!-- Indicateur de force du mot de passe -->
-          <div class="password-strength" *ngIf="password">
-            <div class="strength-bar">
-              <div 
-                class="strength-level" 
-                [style.width.%]="getPasswordStrength()"
-                [class.weak]="getPasswordStrength() <= 33"
-                [class.medium]="getPasswordStrength() > 33 && getPasswordStrength() <= 66"
-                [class.strong]="getPasswordStrength() > 66">
-              </div>
+
+          <div>
+            <label for="nom" class="auth-label">Nom <span class="text-red-500">*</span></label>
+            <input
+              id="nom"
+              type="text"
+              [(ngModel)]="nom"
+              name="nom"
+              placeholder="Votre nom"
+              (blur)="validateNom()"
+              [class.invalid]="touched.nom && fieldErrors.nom"
+              [class.valid]="touched.nom && !fieldErrors.nom && nom"
+              class="auth-input"
+              required
+            />
+            <span class="mt-1 block text-[11.5px] font-medium text-red-500" *ngIf="touched.nom && fieldErrors.nom">
+              {{ fieldErrors.nom }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Email et Téléphone -->
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label for="email" class="auth-label">Email <span class="text-red-500">*</span></label>
+            <input
+              id="email"
+              type="email"
+              [(ngModel)]="email"
+              name="email"
+              placeholder="exemple@email.com"
+              (blur)="validateEmail()"
+              [class.invalid]="touched.email && fieldErrors.email"
+              [class.valid]="touched.email && !fieldErrors.email && email"
+              class="auth-input"
+              required
+            />
+            <span class="mt-1 block text-[11.5px] font-medium text-red-500" *ngIf="touched.email && fieldErrors.email">
+              {{ fieldErrors.email }}
+            </span>
+          </div>
+
+          <!-- Téléphone avec formatage -->
+          <div>
+            <label for="telephone" class="auth-label">Téléphone <span class="font-normal text-slate-400">(optionnel)</span></label>
+            <div class="flex items-stretch overflow-hidden rounded-[9px] border-[1.5px] border-[#e3e6ec] bg-white transition focus-within:border-[#6366f1] focus-within:shadow-[0_0_0_4px_rgba(99,102,241,0.15)]">
+              <span class="flex items-center border-r-[1.5px] border-[#e3e6ec] bg-[#eef0f6] px-2.5 text-[13px] font-semibold text-slate-600">🇹🇳 +216</span>
+              <input
+                id="telephone"
+                type="tel"
+                [(ngModel)]="telephone"
+                name="telephone"
+                placeholder="00 000 000"
+                maxlength="11"
+                (input)="formatPhoneNumber()"
+                class="w-full min-w-0 border-0 bg-transparent px-3 py-[9px] text-sm text-[#1a1a2e] outline-none placeholder:text-slate-400"
+              />
             </div>
-            <span class="strength-text">{{ getPasswordStrengthText() }}</span>
+            <small class="mt-0.5 block text-[11.5px] text-slate-400">Format : 00 000 000 (8 chiffres)</small>
           </div>
-          <span class="field-error" *ngIf="touched.password && fieldErrors.password">
-            {{ fieldErrors.password }}
-          </span>
-          <ul class="password-requirements" *ngIf="touched.password">
-            <li [class.met]="password.length >= 8">✓ Au moins 8 caractères</li>
-            <li [class.met]="/[A-Za-z]/.test(password)">✓ Au moins une lettre</li>
-            <li [class.met]="/\d/.test(password)">✓ Au moins un chiffre</li>
-          </ul>
         </div>
 
-        <div class="input-group">
-          <label for="confirmPassword">Confirmer <span class="required">*</span></label>
-          <input
-            id="confirmPassword"
-            type="password"
-            [(ngModel)]="confirmPassword"
-            name="confirmPassword"
-            placeholder="Confirmez votre mot de passe"
-            (blur)="validateConfirmPassword()"
-            [class.invalid]="touched.confirmPassword && fieldErrors.confirmPassword"
-            [class.valid]="touched.confirmPassword && !fieldErrors.confirmPassword && confirmPassword"
-            required
-          />
-          <span class="field-error" *ngIf="touched.confirmPassword && fieldErrors.confirmPassword">
-            {{ fieldErrors.confirmPassword }}
-          </span>
-          <span class="password-match" *ngIf="touched.confirmPassword && confirmPassword && password && confirmPassword === password">
-            ✅ Les mots de passe correspondent
-          </span>
+        <!-- Mot de passe et Confirmation -->
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label for="password" class="auth-label">Mot de passe <span class="text-red-500">*</span></label>
+            <div class="relative">
+              <input
+                id="password"
+                [type]="showPassword ? 'text' : 'password'"
+                [(ngModel)]="password"
+                name="password"
+                placeholder="8 caractères min."
+                (blur)="validatePassword()"
+                [class.invalid]="touched.password && fieldErrors.password"
+                [class.valid]="touched.password && !fieldErrors.password && password"
+                class="auth-input pr-11"
+                required
+              />
+              <button
+                type="button"
+                (click)="showPassword = !showPassword"
+                [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                class="absolute inset-y-0 right-1 flex w-9 items-center justify-center rounded-md text-base transition hover:scale-110">
+                <i *ngIf="showPassword" class="bi bi-eye text-[17px]" aria-hidden="true"></i>
+                <i *ngIf="!showPassword" class="bi bi-eye-slash text-[17px]" aria-hidden="true"></i>
+              </button>
+            </div>
+            <!-- Indicateur de force du mot de passe -->
+            <div *ngIf="password">
+              <div class="pw-track">
+                <div
+                  class="pw-fill"
+                  [style.width.%]="getPasswordStrength()"
+                  [class.weak]="getPasswordStrength() <= 33"
+                  [class.medium]="getPasswordStrength() > 33 && getPasswordStrength() <= 66"
+                  [class.strong]="getPasswordStrength() > 66">
+                </div>
+              </div>
+              <span class="mt-0.5 block text-[11.5px] font-semibold text-slate-500">{{ getPasswordStrengthText() }}</span>
+            </div>
+            <span class="mt-1 block text-[11.5px] font-medium text-red-500" *ngIf="touched.password && fieldErrors.password">
+              {{ fieldErrors.password }}
+            </span>
+            <ul class="pw-req flex flex-wrap gap-x-3" *ngIf="touched.password">
+              <li [class.met]="password.length >= 8"><i class="bi bi-check2 me-1" aria-hidden="true"></i>Au moins 8 caractères</li>
+              <li [class.met]="/[A-Za-z]/.test(password)"><i class="bi bi-check2 me-1" aria-hidden="true"></i>Au moins une lettre</li>
+              <li [class.met]="/\d/.test(password)"><i class="bi bi-check2 me-1" aria-hidden="true"></i>Au moins un chiffre</li>
+            </ul>
+          </div>
+
+          <div>
+            <label for="confirmPassword" class="auth-label">Confirmer <span class="text-red-500">*</span></label>
+            <input
+              id="confirmPassword"
+              type="password"
+              [(ngModel)]="confirmPassword"
+              name="confirmPassword"
+              placeholder="Confirmez votre mot de passe"
+              (blur)="validateConfirmPassword()"
+              [class.invalid]="touched.confirmPassword && fieldErrors.confirmPassword"
+              [class.valid]="touched.confirmPassword && !fieldErrors.confirmPassword && confirmPassword"
+              class="auth-input"
+              required
+            />
+            <span class="mt-1 block text-[11.5px] font-medium text-red-500" *ngIf="touched.confirmPassword && fieldErrors.confirmPassword">
+              {{ fieldErrors.confirmPassword }}
+            </span>
+            <span class="mt-1 flex items-center gap-1.5 text-[11.5px] font-semibold text-emerald-600" *ngIf="touched.confirmPassword && confirmPassword && password && confirmPassword === password">
+              <i class="bi bi-check-circle-fill" aria-hidden="true"></i> Les mots de passe correspondent
+            </span>
+          </div>
         </div>
-      </div>
 
-      <!-- Conditions -->
-      <div class="checkbox-group">
-        <label class="checkbox-label" [class.error]="!acceptTerms && errorVisible">
-          <input type="checkbox" [(ngModel)]="acceptTerms" name="acceptTerms" />
-          <span>
-            J'accepte les 
-            <a href="#" (click)="$event.preventDefault()">conditions d'utilisation</a> 
-            et la 
-            <a href="#" (click)="$event.preventDefault()">politique de confidentialité</a>
-          </span>
-        </label>
-      </div>
+        <!-- Conditions -->
+        <div class="terms-box">
+          <label class="flex cursor-pointer items-start gap-2.5 text-[12.5px] leading-relaxed text-slate-600"
+                 [class.text-red-500]="!acceptTerms && errorVisible()">
+            <input type="checkbox" [(ngModel)]="acceptTerms" name="acceptTerms"
+                   class="mt-[3px] h-4 w-4 shrink-0 cursor-pointer accent-[#6366f1]" />
+            <span>
+              J'accepte les
+              <a href="#" (click)="$event.preventDefault()" class="font-semibold text-[#6366f1] no-underline underline-offset-2 hover:underline">conditions d'utilisation</a>
+              et la
+              <a href="#" (click)="$event.preventDefault()" class="font-semibold text-[#6366f1] no-underline underline-offset-2 hover:underline">politique de confidentialité</a>
+            </span>
+          </label>
+        </div>
 
-      <!-- Bouton d'inscription -->
-      <button 
-        type="submit" 
-        class="btn-login btn-full"
-        [disabled]="!isFormValid()">
-        <span *ngIf="!isSubmitting">🚀 Créer mon compte</span>
-        <span *ngIf="isSubmitting">⏳ Création en cours...</span>
-      </button>
-    </form>
+        <!-- Bouton d'inscription -->
+        <button
+          type="submit"
+          class="auth-btn"
+          [disabled]="!isFormValid()">
+          <span *ngIf="!isSubmitting()" class="flex items-center gap-2"><i class="bi bi-rocket-takeoff" aria-hidden="true"></i>Créer mon compte</span>
+          <span *ngIf="isSubmitting()" class="flex items-center gap-2"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Création en cours...</span>
+        </button>
+      </form>
 
-    <!-- Lien vers connexion -->
-    <p class="register-link" *ngIf="!successVisible">
-      Vous avez déjà un compte ? <a routerLink="/login">Se connecter</a>
-    </p>
+      <!-- Lien vers connexion -->
+      <p *ngIf="!successVisible()" class="mt-4 border-t border-[#e3e6ec] pt-4 text-center text-sm text-slate-600">
+        Vous avez déjà un compte ? <a routerLink="/login"
+          class="font-bold text-[#6366f1] no-underline underline-offset-2 transition hover:text-[#4f46e5] hover:underline">Se connecter</a>
+      </p>
+    </section>
   </div>
 </div>

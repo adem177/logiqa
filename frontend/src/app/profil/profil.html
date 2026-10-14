@@ -1,0 +1,82 @@
+<div class="ui-page pt-14">
+  <div class="mx-auto w-full max-w-[720px] px-5 py-10">
+
+    <!-- En-tête de page -->
+    <div class="mb-6 flex items-center gap-3">
+      <a [routerLink]="espaceLink()" class="ui-icon-btn" aria-label="Retour à mon espace" title="Retour">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i>
+      </a>
+      <div>
+        <h1 class="ui-title text-[24px]">Mon profil</h1>
+        <p class="ui-sub mt-1">Vos informations personnelles</p>
+      </div>
+    </div>
+
+    <div class="ui-card overflow-hidden">
+
+      <!-- Bandeau identité -->
+      <div class="relative overflow-hidden bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] px-6 py-9 text-center">
+        <div class="pointer-events-none absolute -left-10 -top-14 h-40 w-40 rounded-full bg-white/15 blur-2xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute -bottom-16 -right-8 h-44 w-44 rounded-full bg-white/10 blur-2xl" aria-hidden="true"></div>
+
+        <div class="relative mx-auto grid h-[76px] w-[76px] place-items-center rounded-full border-[3px] border-white/70 bg-white/15 text-[26px] font-extrabold text-white">
+          {{ initials() }}
+        </div>
+        <div class="relative mt-4 text-[21px] font-extrabold tracking-tight text-white">{{ fullName() }}</div>
+        <div class="relative mt-1 break-all text-[13.5px] font-medium text-white/85">{{ email() }}</div>
+        <span class="relative mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-[12px] font-bold text-[#4f46e5] shadow-sm">
+          <i class="bi bi-shield-check" aria-hidden="true"></i>
+          {{ roleLabel() }}
+        </span>
+      </div>
+
+      <!-- Détails du compte -->
+      <div class="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
+        <div class="flex items-center gap-3 rounded-2xl border border-[var(--ui-line)] bg-[#fafaff] p-4">
+          <span class="ui-icon-tile h-10 w-10 flex-none rounded-xl text-[16px]"><i class="bi bi-person" aria-hidden="true"></i></span>
+          <div class="min-w-0">
+            <div class="text-[11px] font-bold uppercase tracking-[0.08em] text-[#98a2b3]">Nom complet</div>
+            <div class="mt-1 truncate text-[14px] font-bold text-[#101828]">{{ fullName() }}</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 rounded-2xl border border-[var(--ui-line)] bg-[#fafaff] p-4">
+          <span class="ui-icon-tile h-10 w-10 flex-none rounded-xl text-[16px]"><i class="bi bi-envelope" aria-hidden="true"></i></span>
+          <div class="min-w-0">
+            <div class="text-[11px] font-bold uppercase tracking-[0.08em] text-[#98a2b3]">Adresse e-mail</div>
+            <div class="mt-1 truncate text-[14px] font-bold text-[#101828]">{{ email() }}</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 rounded-2xl border border-[var(--ui-line)] bg-[#fafaff] p-4">
+          <span class="ui-icon-tile h-10 w-10 flex-none rounded-xl text-[16px]"><i class="bi bi-mortarboard" aria-hidden="true"></i></span>
+          <div class="min-w-0">
+            <div class="text-[11px] font-bold uppercase tracking-[0.08em] text-[#98a2b3]">Rôle</div>
+            <div class="mt-1 truncate text-[14px] font-bold text-[#101828]">{{ roleLabel() }}</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 rounded-2xl border border-[var(--ui-line)] bg-[#fafaff] p-4">
+          <span class="ui-icon-tile h-10 w-10 flex-none rounded-xl text-[16px]"><i class="bi bi-patch-check" aria-hidden="true"></i></span>
+          <div class="min-w-0">
+            <div class="text-[11px] font-bold uppercase tracking-[0.08em] text-[#98a2b3]">Statut du compte</div>
+            <span class="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#d6f8e3] px-2.5 py-1 text-[12px] font-bold text-[#12b76a]">
+              <i class="bi bi-patch-check" aria-hidden="true"></i>Connecté
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-wrap items-center justify-end gap-3 border-t border-[var(--ui-line)] px-5 py-4 sm:px-6">
+        <a [routerLink]="espaceLink()" class="ui-btn ui-btn--soft">
+          <i class="bi bi-grid" aria-hidden="true"></i>{{ espaceLabel() }}
+        </a>
+        <button type="button" class="ui-btn ui-btn--danger" (click)="logout()">
+          <i class="bi bi-box-arrow-right" aria-hidden="true"></i>Se déconnecter
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>

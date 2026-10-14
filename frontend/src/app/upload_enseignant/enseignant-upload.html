@@ -1,124 +1,152 @@
-<div class="upload-page">
-  <header class="upload-header">
-    <h1>Publier un nouveau cours</h1>
-    <p>Remplissez les informations et déposez vos supports pédagogiques (Vidéos, PDF).</p>
-  </header>
+<div class="ui-page pt-14">
+  <div class="mx-auto w-full max-w-[980px] px-4 py-7 md:px-8">
 
-  <form (ngSubmit)="submitCourse()" class="upload-form">
-
-    <!-- METADONNÉES DU COURS -->
-    <section class="form-card">
-
-      <div class="form-group">
-        <label for="courseSubject">Matière *</label>
-        <select
-          id="courseSubject"
-          [ngModel]="courseSubject()"
-          (ngModelChange)="courseSubject.set($event); onSubjectChange()"
-          name="courseSubject"
-          required
-        >
-          <option value="" disabled selected>Sélectionner une matière</option>
-          @for (subject of subjects; track subject.value) {
-            <option [value]="subject.value">{{ subject.label }}</option>
-          }
-        </select>
+    <!-- ===== EN-TÊTE ===== -->
+    <header class="mb-6 flex flex-wrap items-center gap-4">
+      <span class="ui-icon-tile h-12 w-12 flex-none"><i class="bi bi-cloud-arrow-up text-[21px]" aria-hidden="true"></i></span>
+      <div>
+        <h1 class="text-[24px] font-extrabold tracking-tight text-[#101828]">Publier un nouveau cours</h1>
+        <p class="mt-0.5 text-[14px] text-[#667085]">Remplissez les informations et déposez vos supports pédagogiques (Vidéos, PDF).</p>
       </div>
-
-      <div class="form-group">
-        <label for="courseTitle">Titre du cours *</label>
-        <select
-          id="courseTitle"
-          [ngModel]="courseTitle()"
-          (ngModelChange)="courseTitle.set($event)"
-          name="courseTitle"
-          [disabled]="!courseSubject()"
-          required
-        >
-          <option value="" disabled selected>
-            {{ courseSubject() ? 'Sélectionner un chapitre' : 'Choisissez d\'abord une matière' }}
-          </option>
-          @for (t of availableTitles(); track t) {
-            <option [value]="t">{{ t }}</option>
-          }
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="courseDescription">Description du cours</label>
-        <textarea 
-          id="courseDescription" 
-          rows="3" 
-          [ngModel]="courseDescription()" 
-          (ngModelChange)="courseDescription.set($event)"
-          name="courseDescription" 
-          placeholder="Résumé des objectifs du cours..."
-        ></textarea>
-      </div>
-
-      <!-- UPLOAD VIDÉOS ET PDF -->
-      <div class="upload-grid">
-        
-        <!-- UPLOAD VIDÉOS -->
-        <div class="upload-block">
-          <label class="upload-label">🎬 Vidéos (MP4, MKV)</label>
-          <input 
-            type="file" 
-            #videoInput 
-            accept="video/*" 
-            multiple 
-            hidden 
-            (change)="onFileSelected($event, 'video')" 
-          />
-          <button type="button" class="btn-upload" (click)="videoInput.click()">
-            📁 Parcourir vidéos
-          </button>
-
-          <ul class="file-list">
-            @for (v of videos(); track $index) {
-              <li>
-                <span class="file-name">🎬 {{ v.name }}</span>
-                <button type="button" class="btn-remove-file" (click)="removeFile('video', $index)">✕</button>
-              </li>
-            }
-          </ul>
-        </div>
-
-        <!-- UPLOAD PDF -->
-        <div class="upload-block">
-          <label class="upload-label">📄 Documents PDF</label>
-          <input 
-            type="file" 
-            #pdfInput 
-            accept="application/pdf" 
-            multiple 
-            hidden 
-            (change)="onFileSelected($event, 'pdf')" 
-          />
-          <button type="button" class="btn-upload" (click)="pdfInput.click()">
-            📁 Parcourir PDF
-          </button>
-
-          <ul class="file-list">
-            @for (p of pdfs(); track $index) {
-              <li>
-                <span class="file-name">📄 {{ p.name }}</span>
-                <button type="button" class="btn-remove-file" (click)="removeFile('pdf', $index)">✕</button>
-              </li>
-            }
-          </ul>
-        </div>
-
-      </div>
-
-    </section>
-
-    <!-- ACTION PUBLIER -->
-    <div class="form-actions">
-      <button type="submit" class="btn-primary" [disabled]="isSubmitting()">
-        {{ isSubmitting() ? 'Envoi en cours...' : '🚀 Publier le cours' }}
+      <button type="button" class="ui-btn ui-btn--ghost ml-auto flex-none" (click)="goBack()">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i>
+        Retour au tableau de bord
       </button>
-    </div>
+    </header>
 
-  </form>
+    <form (ngSubmit)="submitCourse()" class="space-y-5">
+
+      <!-- MÉTADONNÉES DU COURS -->
+      <section class="ui-card space-y-4 p-5 sm:p-6">
+
+        <div>
+          <label for="courseSubject" class="mb-1.5 block text-[12.5px] font-semibold text-[#344054]">Matière *</label>
+          <select
+            id="courseSubject"
+            [ngModel]="courseSubject()"
+            (ngModelChange)="courseSubject.set($event); onSubjectChange()"
+            name="courseSubject"
+            required
+            class="ui-input">
+            <option value="" disabled selected>Sélectionner une matière</option>
+            @for (subject of subjects; track subject.value) {
+              <option [value]="subject.value">{{ subject.label }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label for="courseTitle" class="mb-1.5 block text-[12.5px] font-semibold text-[#344054]">Titre du cours *</label>
+          <select
+            id="courseTitle"
+            [ngModel]="courseTitle()"
+            (ngModelChange)="courseTitle.set($event)"
+            name="courseTitle"
+            [disabled]="!courseSubject()"
+            required
+            class="ui-input">
+            <option value="" disabled selected>
+              {{ courseSubject() ? 'Sélectionner un chapitre' : 'Choisissez d\'abord une matière' }}
+            </option>
+            @for (t of availableTitles(); track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+        </div>
+
+        <div>
+          <label for="courseDescription" class="mb-1.5 block text-[12.5px] font-semibold text-[#344054]">Description du cours</label>
+          <textarea
+            id="courseDescription"
+            rows="3"
+            [ngModel]="courseDescription()"
+            (ngModelChange)="courseDescription.set($event)"
+            name="courseDescription"
+            placeholder="Résumé des objectifs du cours..."
+            class="ui-input resize-y"></textarea>
+        </div>
+
+        <!-- UPLOAD VIDÉOS ET PDF -->
+        <div class="grid gap-4 sm:grid-cols-2">
+
+          <!-- UPLOAD VIDÉOS -->
+          <div class="rounded-2xl border-2 border-dashed border-[#d6d9f0] bg-[#fafaff] p-4">
+            <div class="mb-3 flex items-center gap-2 text-[13px] font-bold text-[#344054]">
+              <i class="bi bi-film text-[16px] text-[#6366f1]" aria-hidden="true"></i>
+              Vidéos (MP4, MKV)
+            </div>
+            <input
+              type="file"
+              #videoInput
+              accept="video/*"
+              multiple
+              hidden
+              (change)="onFileSelected($event, 'video')" />
+            <button type="button" class="ui-btn ui-btn--soft w-full" (click)="videoInput.click()">
+              <i class="bi bi-folder2-open" aria-hidden="true"></i>
+              Parcourir vidéos
+            </button>
+
+            <ul class="mt-3 space-y-2">
+              @for (v of videos(); track $index) {
+                <li class="flex items-center justify-between gap-2 rounded-xl border border-[#edeff5] bg-white px-3 py-2">
+                  <span class="flex min-w-0 items-center gap-2 text-[13px] font-semibold text-[#344054]">
+                    <i class="bi bi-play-circle text-[15px] text-[#6366f1]" aria-hidden="true"></i>
+                    <span class="truncate">{{ v.name }}</span>
+                  </span>
+                  <button type="button" class="ui-icon-btn ui-icon-btn--danger" (click)="removeFile('video', $index)" title="Retirer ce fichier">
+                    <i class="bi bi-x-lg text-[12px]" aria-hidden="true"></i>
+                  </button>
+                </li>
+              }
+            </ul>
+          </div>
+
+          <!-- UPLOAD PDF -->
+          <div class="rounded-2xl border-2 border-dashed border-[#d6d9f0] bg-[#fafaff] p-4">
+            <div class="mb-3 flex items-center gap-2 text-[13px] font-bold text-[#344054]">
+              <i class="bi bi-file-earmark-pdf text-[16px] text-[#f04438]" aria-hidden="true"></i>
+              Documents PDF
+            </div>
+            <input
+              type="file"
+              #pdfInput
+              accept="application/pdf"
+              multiple
+              hidden
+              (change)="onFileSelected($event, 'pdf')" />
+            <button type="button" class="ui-btn ui-btn--soft w-full" (click)="pdfInput.click()">
+              <i class="bi bi-folder2-open" aria-hidden="true"></i>
+              Parcourir PDF
+            </button>
+
+            <ul class="mt-3 space-y-2">
+              @for (p of pdfs(); track $index) {
+                <li class="flex items-center justify-between gap-2 rounded-xl border border-[#edeff5] bg-white px-3 py-2">
+                  <span class="flex min-w-0 items-center gap-2 text-[13px] font-semibold text-[#344054]">
+                    <i class="bi bi-file-earmark-pdf text-[15px] text-[#f04438]" aria-hidden="true"></i>
+                    <span class="truncate">{{ p.name }}</span>
+                  </span>
+                  <button type="button" class="ui-icon-btn ui-icon-btn--danger" (click)="removeFile('pdf', $index)" title="Retirer ce fichier">
+                    <i class="bi bi-x-lg text-[12px]" aria-hidden="true"></i>
+                  </button>
+                </li>
+              }
+            </ul>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ACTION PUBLIER -->
+      <div class="flex justify-end">
+        <button type="submit" class="ui-btn" [disabled]="isSubmitting()">
+          <i class="bi bi-rocket-takeoff" aria-hidden="true"></i>
+          {{ isSubmitting() ? 'Envoi en cours...' : 'Publier le cours' }}
+        </button>
+      </div>
+
+    </form>
+  </div>
 </div>

@@ -1,73 +1,149 @@
-<div class="login-wrapper">
-  <div class="login-card">
-    <div class="brand">
-      <h3>LOGIQA</h3>
-      <span class="brand-tag">Plateforme E-Learning</span>
-    </div>
+<div class="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-gradient-to-br from-[#eef2ff] via-[#f3f3fb] to-[#f5f0ff] px-4 pb-6 pt-16">
 
-    <h1>Se connecter</h1>
-    <div class="error-msg" *ngIf="errorVisible">
-      ⚠️ {{ errorMessage }}
-    </div>
+  <!-- Halos décoratifs indigo / violet -->
+  <span aria-hidden="true" class="pointer-events-none absolute -left-40 -top-40 h-[420px] w-[420px] rounded-full bg-[#6366f1]/20 blur-3xl"></span>
+  <span aria-hidden="true" class="pointer-events-none absolute -bottom-48 -right-32 h-[480px] w-[480px] rounded-full bg-[#8b5cf6]/20 blur-3xl"></span>
+  <span aria-hidden="true" class="pointer-events-none absolute left-1/2 top-6 h-64 w-64 -translate-x-1/2 rounded-full bg-[#a5b4fc]/30 blur-3xl"></span>
 
-    <!-- Étape 1 : identifiants + captcha -->
-    <form (ngSubmit)="validerConnexion()" *ngIf="!otpStep">
-      <div class="input-group">
-        <label>Login</label>
-        <input type="text" [(ngModel)]="login" name="login" placeholder="Votre identifiant" required />
+  <div class="relative z-10 grid w-full max-w-[1000px] overflow-hidden rounded-[28px] bg-white shadow-[0_45px_100px_-30px_rgba(79,70,229,0.45)] ring-1 ring-white/70 md:grid-cols-2">
+
+    <!-- ===== Panneau gauche : univers LOGIQA ===== -->
+    <aside class="relative flex flex-col overflow-hidden bg-[#6366f1] px-6 py-6 sm:px-9">
+      <span class="pointer-events-none absolute -left-16 -top-16 h-56 w-56 rounded-full bg-white/10"></span>
+      <span class="pointer-events-none absolute -bottom-24 -right-16 h-64 w-64 rounded-full bg-white/10"></span>
+      <span class="pointer-events-none absolute bottom-14 left-4 h-24 w-24 rotate-12 rounded-[26px] bg-white/5"></span>
+
+      <div class="relative z-10">
+        <h3 class="text-2xl font-extrabold tracking-wide text-white">LOGIQA</h3>
+        <span class="mt-1 block text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75">Plateforme E-Learning</span>
       </div>
 
-      <div class="input-group">
-        <label>Mot de passe</label>
-        <input type="password" [(ngModel)]="password" name="password" placeholder="••••••••" required />
+      <!-- Illustration décorative -->
+      <div class="relative z-10 flex flex-1 items-center justify-center py-5">
+        <svg viewBox="0 0 300 330" class="w-full max-w-[180px]" aria-hidden="true">
+          <path d="M14 296 H286" stroke="rgba(255,255,255,0.45)" stroke-width="3" stroke-linecap="round" />
+          <path d="M36 296 C36 258 62 240 94 244 C82 272 62 288 36 296 Z" fill="rgba(255,255,255,0.35)" />
+          <path d="M56 296 C58 274 74 262 96 264 C88 282 76 291 56 296 Z" fill="rgba(255,255,255,0.6)" />
+          <rect x="84" y="26" width="142" height="270" rx="26" fill="#ffffff" />
+          <rect x="94" y="40" width="122" height="242" rx="18" fill="#f4f5f7" />
+          <rect x="140" y="33" width="30" height="6" rx="3" fill="#e3e6ec" />
+          <rect x="110" y="66" width="90" height="72" rx="12" fill="#ffffff" stroke="#e3e6ec" stroke-width="2" />
+          <circle cx="138" cy="102" r="14" fill="#c7c9f7" />
+          <circle cx="155" cy="102" r="14" fill="#8b8cf0" />
+          <circle cx="172" cy="102" r="14" fill="#6366f1" />
+          <circle cx="122" cy="168" r="5" fill="#6366f1" />
+          <rect x="136" y="165" width="70" height="6" rx="3" fill="#c7c9f7" />
+          <circle cx="122" cy="192" r="5" fill="#6366f1" />
+          <rect x="136" y="189" width="52" height="6" rx="3" fill="#c7c9f7" />
+          <rect x="138" y="226" width="66" height="26" rx="9" fill="#6366f1" />
+          <circle cx="252" cy="78" r="11" fill="rgba(255,255,255,0.5)" />
+          <circle cx="44" cy="132" r="7" fill="rgba(255,255,255,0.45)" />
+          <circle cx="258" cy="212" r="6" fill="rgba(255,255,255,0.35)" />
+        </svg>
+      </div>
+    </aside>
+
+    <!-- ===== Panneau droit : formulaire ===== -->
+    <section class="flex flex-col justify-center bg-[#f4f5f7] px-5 py-6 sm:px-9 sm:py-7">
+      <h1 class="mb-4 text-center text-[22px] font-extrabold uppercase tracking-[0.06em] text-[#1a1a2e]">Se connecter</h1>
+
+      <div *ngIf="errorVisible"
+           class="mb-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[13px] font-medium leading-snug text-red-600">
+        <i class="bi bi-exclamation-triangle-fill mt-0.5" aria-hidden="true"></i> {{ errorMessage }}
       </div>
 
-      <div class="input-group captcha-group">
-        <label>Code de vérification</label>
-        <div class="captcha-row">
-          <input type="text" [(ngModel)]="captchaInput" name="captchaInput" placeholder="Retapez le code" required />
-          <div class="code-box" (click)="refreshCaptcha()" title="Cliquer pour rafraîchir">
-            {{ captchaCode }}
+      <!-- Étape 1 : identifiants + captcha -->
+      <form (ngSubmit)="validerConnexion()" *ngIf="!otpStep" class="space-y-3">
+        <div>
+          <label class="auth-label">Login</label>
+          <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <i class="bi bi-envelope text-[15px]" aria-hidden="true"></i>
+            </span>
+            <input type="text" [(ngModel)]="login" name="login" placeholder="Votre identifiant" required
+                   class="auth-input pl-10" />
           </div>
         </div>
-        <button type="button" class="refresh-btn" (click)="refreshCaptcha()">
-          🔄 Rafraîchir le code
-        </button>
-      </div>
-      
-      <div class="actions">
-  <a routerLink="/forgot-password" class="forgot-link">Mot de passe oublié ?</a>
-  <button type="submit" class="btn-login" [disabled]="isSubmitting">
-    {{ isSubmitting ? 'Envoi du code…' : 'Se connecter' }}
-  </button>
-</div>
-    </form>
 
-    <!-- Étape 2 : code OTP envoyé par email -->
-    <div *ngIf="otpStep">
-      <p class="subtitle">Un code de vérification a été envoyé à votre email.</p>
+        <div>
+          <label class="auth-label">Mot de passe</label>
+          <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+              <i class="bi bi-lock text-[15px]" aria-hidden="true"></i>
+            </span>
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              name="password"
+              placeholder="••••••••"
+              required
+              class="auth-input pl-10 pr-12" />
+            <button
+              type="button"
+              (click)="togglePassword()"
+              [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+              tabindex="-1"
+              class="absolute inset-y-0 right-1 flex w-10 items-center justify-center rounded-md text-slate-400 transition hover:text-[#6366f1]">
+              <!-- Œil ouvert (mot de passe visible) -->
+              <i *ngIf="showPassword" class="bi bi-eye text-[17px]" aria-hidden="true"></i>
+              <!-- Œil barré (mot de passe masqué) -->
+              <i *ngIf="!showPassword" class="bi bi-eye-slash text-[17px]" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
 
-      <div class="input-group">
-        <label>Code de vérification</label>
-        <input
-          type="text"
-          [(ngModel)]="otpCode"
-          name="otpCode"
-          placeholder="123456"
-          maxlength="6"
-          [disabled]="isVerifying"
-        />
-      </div>
+        <div>
+          <label class="auth-label">Code de vérification</label>
+          <div class="flex items-stretch gap-2">
+            <input type="text" [(ngModel)]="captchaInput" name="captchaInput" placeholder="Retapez le code" required
+                   class="auth-input min-w-0 flex-1" />
+            <div (click)="refreshCaptcha()" title="Cliquer pour rafraîchir"
+                 class="flex w-[136px] shrink-0 cursor-pointer select-none items-center justify-center rounded-[9px] border-[1.5px] border-[#e3e6ec] bg-[#e9ecf3] font-mono text-lg font-bold tracking-[0.18em] text-[#1e2f52] transition hover:bg-[#dfe3ec] active:scale-[0.97]">
+              {{ captchaCode }}
+            </div>
+          </div>
+          <button type="button" (click)="refreshCaptcha()"
+                  class="mt-1.5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#6366f1] transition hover:text-[#4f46e5]">
+            <i class="bi bi-arrow-clockwise text-[14px]" aria-hidden="true"></i> Rafraîchir le code
+          </button>
+        </div>
 
-      <div class="actions">
-        <button type="button" class="btn-login" (click)="validerOtp()" [disabled]="isVerifying">
+        <div class="text-center">
+          <a routerLink="/forgot-password"
+             class="mb-2.5 block text-[13px] font-semibold text-[#6366f1] no-underline underline-offset-2 transition hover:text-[#4f46e5] hover:underline">Mot de passe oublié ?</a>
+          <button type="submit" class="auth-btn" [disabled]="isSubmitting">
+            {{ isSubmitting ? 'Envoi du code…' : 'Se connecter' }}
+          </button>
+        </div>
+      </form>
+
+      <!-- Étape 2 : code OTP envoyé par email -->
+      <div *ngIf="otpStep" class="space-y-3">
+        <p class="rounded-lg border-l-4 border-[#6366f1] bg-indigo-50 px-3 py-2.5 text-[13px] leading-relaxed text-[#4338ca]">
+          Un code de vérification a été envoyé à votre email.
+        </p>
+
+        <div>
+          <label class="auth-label">Code de vérification</label>
+          <input
+            type="text"
+            [(ngModel)]="otpCode"
+            name="otpCode"
+            placeholder="123456"
+            maxlength="6"
+            [disabled]="isVerifying"
+            class="auth-input text-center text-lg font-bold tracking-[0.35em]" />
+        </div>
+
+        <button type="button" class="auth-btn" (click)="validerOtp()" [disabled]="isVerifying">
           {{ isVerifying ? 'Vérification…' : 'Vérifier le code' }}
         </button>
       </div>
-    </div>
 
-    <p class="register-link" *ngIf="!otpStep">
-      Pas encore de compte ? <a routerLink="/inscription">S'inscrire</a>
-    </p>
+      <p *ngIf="!otpStep" class="mt-4 border-t border-[#e3e6ec] pt-4 text-center text-sm text-slate-600">
+        Pas encore de compte ? <a routerLink="/inscription"
+          class="font-bold text-[#6366f1] no-underline underline-offset-2 transition hover:text-[#4f46e5] hover:underline">S'inscrire</a>
+      </p>
+    </section>
   </div>
 </div>

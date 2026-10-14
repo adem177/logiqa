@@ -1,21 +1,32 @@
-<div class="courses-page">
+<div class="ui-page">
   <!-- HERO SECTION -->
-  <section class="hero">
-    <div class="hero-content">
-      <span class="badge">
-        <span class="badge-icon">📚</span>
+  <section class="relative overflow-hidden">
+    <!-- Halos décoratifs -->
+    <div class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#6366f1]/15 blur-3xl" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-[#a5b4fc]/25 blur-3xl" aria-hidden="true"></div>
+
+    <div class="relative mx-auto flex max-w-[860px] flex-col items-center px-5 pb-10 pt-12 text-center">
+      <span class="inline-flex items-center gap-2 rounded-full border border-[#6366f1]/20 bg-white px-3.5 py-1.5 text-[11.5px] font-bold uppercase tracking-[0.14em] text-[#4f46e5] shadow-sm">
+        <i class="bi bi-book" aria-hidden="true"></i>
         E-LEARNING
       </span>
 
-      <h1>Découvrez nos formations</h1>
+      <h1 class="mt-5 text-[34px] font-extrabold leading-[1.08] tracking-tight text-[#101828] sm:text-[42px]">
+        Découvrez nos formations
+      </h1>
 
-      <p class="hero-subtitle">
+      <p class="mt-4 flex items-center justify-center gap-2 text-[15px] font-semibold text-[#344054]" *ngIf="userFullName()">
+        <i class="bi bi-emoji-smile text-[17px] text-[#6366f1]" aria-hidden="true"></i>
+        Bonjour, <strong class="font-bold text-[#101828]">{{ userFullName() }}</strong> !
+      </p>
+
+      <p class="mt-2 text-[15px] leading-relaxed text-[#667085]">
         Développez vos compétences grâce à nos formations professionnelles.
       </p>
 
       <!-- Search -->
-      <div class="search-box" [class.focused]="isSearchFocused">
-        <span class="search-icon">🔍</span>
+      <div class="ui-searchbox mt-7" [class.focused]="isSearchFocused">
+        <i class="bi bi-search flex-none text-[16px] text-[#98a2b3]" aria-hidden="true"></i>
 
         <input
           type="text"
@@ -29,187 +40,187 @@
 
         <button
           *ngIf="searchTerm()"
-          class="clear-search"
+          class="grid h-7 w-7 flex-none place-items-center rounded-full text-[13px] text-[#98a2b3] transition hover:bg-[#f3f3fb] hover:text-[#101828]"
           (click)="clearSearch()"
           aria-label="Effacer la recherche"
           type="button">
-          ✕
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
         </button>
       </div>
 
       <!-- Stats rapides -->
-      <div class="hero-stats">
-        <div class="hero-stat">
-          <span class="hero-stat-value">{{ courses().length }}</span>
-          <span class="hero-stat-label">Cours disponibles</span>
+      <div class="mt-7 flex items-center justify-center gap-10">
+        <div class="flex flex-col items-center">
+          <span class="text-[26px] font-extrabold leading-none text-[#101828]">{{ courses().length }}</span>
+          <span class="mt-1.5 text-[12.5px] font-medium text-[#667085]">Cours disponibles</span>
         </div>
-        <div class="hero-stat">
-          <span class="hero-stat-value">{{ stats().categories }}</span>
-          <span class="hero-stat-label">Catégories</span>
+        <span class="h-9 w-px bg-[var(--ui-line)]" aria-hidden="true"></span>
+        <div class="flex flex-col items-center">
+          <span class="text-[26px] font-extrabold leading-none text-[#101828]">{{ stats().categories }}</span>
+          <span class="mt-1.5 text-[12.5px] font-medium text-[#667085]">Catégories</span>
         </div>
       </div>
     </div>
   </section>
 
   <!-- CATEGORIES -->
-  <section class="categories-section">
-    <div class="categories-header">
-      <span class="categories-label">Filtrer par catégorie</span>
-      <span class="categories-count">{{ stats().categories }} catégories</span>
-    </div>
-
-    <div class="categories-scroll">
-      <button
-        *ngFor="let category of categories()"
-        class="category-btn"
-        [class.active]="selectedCategory() === category"
-        (click)="selectCategory(category)"
-        [attr.aria-pressed]="selectedCategory() === category">
-        {{ category }}
-        <span *ngIf="category !== 'Tous'" class="category-count">
-          {{ courses().filter(c => c.category === category).length }}
+  <section class="mx-auto w-full max-w-[1180px] px-5">
+    <div class="ui-card p-4 sm:p-5">
+      <div class="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+        <span class="flex items-center gap-2 text-[13px] font-bold text-[#344054]">
+          <i class="bi bi-sliders text-[15px] text-[#6366f1]" aria-hidden="true"></i>
+          Filtrer par catégorie
         </span>
-      </button>
+        <span class="text-[12px] font-semibold text-[#98a2b3]">{{ stats().categories }} catégories</span>
+      </div>
+
+      <div class="flex flex-wrap gap-2.5">
+        <button
+          *ngFor="let category of categories()"
+          class="ui-chip"
+          [class.active]="selectedCategory() === category"
+          (click)="selectCategory(category)"
+          [attr.aria-pressed]="selectedCategory() === category">
+          {{ category }}
+          <span *ngIf="category !== 'Tous'" class="ui-chip-count">
+            {{ courses().filter(c => c.category === category).length }}
+          </span>
+        </button>
+      </div>
     </div>
   </section>
 
   <!-- COURSES LIST -->
-  <section class="courses-container">
-    <div class="section-header">
-      <div class="section-header-left">
-        <h2>Nos formations</h2>
-        <p class="section-subtitle">
+  <section class="mx-auto w-full max-w-[1180px] px-5 pb-16 pt-9">
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h2 class="text-[22px] font-extrabold tracking-tight text-[#101828]">Nos formations</h2>
+        <p class="mt-1.5 flex flex-wrap items-center gap-2 text-[13.5px] font-medium text-[#667085]">
           {{ filteredCourses().length }} cours disponibles
-          <span *ngIf="searchTerm() || selectedCategory() !== 'Tous'" class="filter-badge">
-            🎯 Filtrés
+          <span *ngIf="searchTerm() || selectedCategory() !== 'Tous'" class="inline-flex items-center gap-1.5 rounded-full bg-[#eef2ff] px-2.5 py-1 text-[11px] font-bold text-[#4f46e5]">
+            <i class="bi bi-funnel" aria-hidden="true"></i>
+            Filtrés
           </span>
         </p>
       </div>
 
-      <div class="section-header-right">
-        <div class="sort-wrapper">
-          <label for="sortSelect" class="sort-label">Trier par</label>
-          <select
-            id="sortSelect"
-            [value]="selectedSort()"
-            (change)="changeSort($any($event.target).value)"
-            class="sort-select">
-            <option *ngFor="let option of sortOptions" [value]="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-        </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <label for="sortSelect" class="text-[12.5px] font-semibold text-[#667085]">Trier par</label>
+        <select
+          id="sortSelect"
+          [value]="selectedSort()"
+          (change)="changeSort($any($event.target).value)"
+          class="ui-input w-auto py-2 pl-3 pr-8 text-[13px]">
+          <option *ngFor="let option of sortOptions" [value]="option.value">
+            {{ option.label }}
+          </option>
+        </select>
 
-        <button class="view-toggle" aria-label="Vue en grille">
-          <span class="view-icon">⊞</span>
+        <button class="ui-icon-btn" aria-label="Vue en grille">
+          <i class="bi bi-grid" aria-hidden="true"></i>
         </button>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div *ngIf="isLoading()" class="loading-state">
-      <div class="spinner"></div>
-      <p>Chargement des cours...</p>
+    <div *ngIf="isLoading()" class="flex flex-col items-center gap-3.5 py-16">
+      <span class="h-9 w-9 animate-spin rounded-full border-[3px] border-[#e4e7f2] border-t-[#6366f1]"></span>
+      <p class="text-[13.5px] font-semibold text-[#667085]">Chargement des cours...</p>
     </div>
 
     <!-- Error State -->
-    <div *ngIf="error()" class="error-state">
-      <span class="error-icon">⚠️</span>
-      <p>{{ error() }}</p>
-      <button class="retry-btn" (click)="loadCourses()">Réessayer</button>
+    <div *ngIf="error()" class="ui-card flex flex-col items-center gap-3.5 px-6 py-12 text-center">
+      <span class="ui-icon-tile h-12 w-12 rounded-2xl bg-rose-50 text-[20px] text-rose-500"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i></span>
+      <p class="text-[14px] font-semibold text-[#344054]">{{ error() }}</p>
+      <button class="ui-btn" (click)="loadCourses()">Réessayer</button>
     </div>
 
     <!-- No Results -->
-    <div *ngIf="!isLoading() && !error() && filteredCourses().length === 0" class="empty-state">
-      <span class="empty-icon">🔍</span>
-      <h3>Aucun cours trouvé</h3>
-      <p>
+    <div *ngIf="!isLoading() && !error() && filteredCourses().length === 0" class="ui-card flex flex-col items-center gap-3 px-6 py-12 text-center">
+      <span class="ui-icon-tile h-14 w-14 rounded-2xl text-[24px]"><i class="bi bi-search" aria-hidden="true"></i></span>
+      <h3 class="mt-1 text-[16px] font-bold text-[#101828]">Aucun cours trouvé</h3>
+      <p class="max-w-md text-[13.5px] leading-relaxed text-[#667085]">
         Aucun cours ne correspond à vos critères de recherche.
         Essayez de modifier vos filtres.
       </p>
-      <button class="reset-filters" (click)="clearSearch(); selectCategory('Tous')">
+      <button class="ui-btn ui-btn--soft mt-1" (click)="clearSearch(); selectCategory('Tous')">
         Réinitialiser les filtres
       </button>
     </div>
 
     <!-- Grid -->
-    <div class="courses-grid" *ngIf="!isLoading() && !error() && filteredCourses().length > 0">
-      <div
-        class="course-card"
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" *ngIf="!isLoading() && !error() && filteredCourses().length > 0">
+      <article
+        class="ui-card group cursor-pointer overflow-hidden transition duration-200 hover:-translate-y-1.5 hover:border-[#6366f1]/45 hover:shadow-[var(--ui-shadow-lg)]"
         *ngFor="let course of paginatedCourses()"
         (click)="viewCourse(course.id)"
         [attr.aria-label]="course.title">
 
         <!-- Image -->
-        <div class="course-image">
+        <div class="relative h-[200px] overflow-hidden bg-[#f3f3fb]">
           <img
+            class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
             [src]="course.image"
             [alt]="course.title"
             (error)="onImageError($event)"
             loading="lazy">
 
-          <span class="category-tag">
+          <span class="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1.5 text-[11.5px] font-bold tracking-[0.03em] text-[#4f46e5] shadow-sm backdrop-blur">
             {{ course.category }}
           </span>
         </div>
 
         <!-- Content -->
-        <div class="course-content">
-          <h3 class="course-title">{{ course.title }}</h3>
+        <div class="flex flex-1 flex-col gap-2.5 p-5">
+          <h3 class="line-clamp-2 text-[16.5px] font-bold leading-snug text-[#101828] transition group-hover:text-[#4f46e5]">
+            {{ course.title }}
+          </h3>
 
-          <p class="course-description">
+          <p class="line-clamp-2 text-[13.5px] leading-relaxed text-[#667085]">
             {{ course.description }}
           </p>
 
-          <div class="course-meta">
-            <span class="meta-item">
-              <span class="meta-icon">📚</span>
-              {{ course.lessons }} leçons
-            </span>
+          <div class="mt-0.5 flex items-center gap-1.5 text-[13px] font-semibold text-[#667085]">
+            <i class="bi bi-journal-text text-[15px] text-[#6366f1]" aria-hidden="true"></i>
+            {{ course.lessons }} leçons
           </div>
 
-          <div class="course-footer">
+          <div class="mt-auto pt-1.5">
             <button
-              class="btn-view"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#6366f1]/25 bg-[#eef2ff] px-4 py-2.5 text-[13px] font-bold text-[#4f46e5] transition group-hover:border-transparent group-hover:bg-[#6366f1] group-hover:text-white"
               (click)="$event.stopPropagation(); viewCourse(course.id)">
               Voir le cours
-              <span class="btn-arrow">→</span>
+              <i class="bi bi-arrow-right" aria-hidden="true"></i>
             </button>
           </div>
-
-          <div class="course-tags">
-            <span *ngFor="let tag of course.tags.slice(0, 3)" class="tag">
-              #{{ tag }}
-            </span>
-          </div>
         </div>
-      </div>
+      </article>
     </div>
 
     <!-- Pagination -->
-    <div class="pagination" *ngIf="totalPages() > 1">
+    <div class="ui-pagination mt-10" *ngIf="totalPages() > 1">
       <button
-        class="page-btn"
+        class="ui-pager"
         [disabled]="currentPage() === 1"
         (click)="previousPage()"
         aria-label="Page précédente">
-        ‹
+        <i class="bi bi-chevron-left" aria-hidden="true"></i>
       </button>
 
       <button
         *ngFor="let page of pageNumbers()"
-        class="page-btn"
+        class="ui-pager"
         [class.active]="currentPage() === page"
         (click)="goToPage(page)">
         {{ page }}
       </button>
 
       <button
-        class="page-btn"
+        class="ui-pager"
         [disabled]="currentPage() === totalPages()"
         (click)="nextPage()"
         aria-label="Page suivante">
-        ›
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
       </button>
     </div>
   </section>

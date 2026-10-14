@@ -1,158 +1,256 @@
-<div class="course-detail-page">
-  <!-- ============================================
-       HEADER
-       ============================================ -->
-  <header class="detail-header">
-    <button class="btn-back" (click)="goBack()">
-      <span class="back-icon">←</span>
-      Retour aux cours
-    </button>
-    <h1 class="course-title">{{ courseTitle() }}</h1>
-  </header>
+<div class="ui-page pt-14">
+  <div class="mx-auto w-full max-w-[920px] px-5 py-7 md:px-6 md:py-9">
 
-  <!-- ============================================
-       ONGLETS
-       ============================================ -->
-  <nav class="tabs-nav">
-    <button
-      class="tab-btn"
-      [class.active]="activeTab() === 'cours'"
-      (click)="setTab('cours')">
-      <span class="tab-icon">📖</span>
-      Cours
-    </button>
-    <button
-      class="tab-btn"
-      [class.active]="activeTab() === 'examen'"
-      (click)="setTab('examen')">
-      <span class="tab-icon">📝</span>
-      Examen
-    </button>
-  </nav>
+    <!-- ============================================
+         HEADER
+         ============================================ -->
+    <header class="mb-5">
+      <button
+        type="button"
+        class="mb-4 inline-flex items-center gap-2 text-[14px] font-bold text-[#4f46e5] transition hover:text-[#3730a3]"
+        (click)="goBack()">
+        <i class="bi bi-arrow-left text-[16px]" aria-hidden="true"></i>
+        Retour à mon espace
+      </button>
+      <h1 class="ui-title text-[26px] leading-tight md:text-[28px]">{{ courseTitle() }}</h1>
+    </header>
 
-  <!-- ============================================
-       CONTENU ONGLET COURS
-       ============================================ -->
-  <div class="tab-content" *ngIf="activeTab() === 'cours'">
-    <div class="chapters-list">
-      
-      <div
-        class="chapter-card"
+    <!-- ============================================
+         ONGLETS
+         ============================================ -->
+    <nav class="mb-6 inline-flex gap-2 rounded-2xl border border-[var(--ui-line)] bg-white p-1.5 shadow-[0_1px_3px_rgba(16,24,40,0.06)] max-sm:w-full" aria-label="Sections du cours">
+      <button
+        type="button"
+        class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-[14px] font-bold transition sm:flex-none"
+        [ngClass]="activeTab() === 'cours' ? 'bg-[#eef2ff] text-[#4f46e5]' : 'text-[#667085] hover:bg-[#f4f5fa]'"
+        (click)="setTab('cours')">
+        <i class="bi bi-journal-text text-[15px]" aria-hidden="true"></i>
+        Cours
+      </button>
+      <button
+        type="button"
+        class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-[14px] font-bold transition sm:flex-none"
+        [ngClass]="activeTab() === 'examen' ? 'bg-[#eef2ff] text-[#4f46e5]' : 'text-[#667085] hover:bg-[#f4f5fa]'"
+        (click)="setTab('examen')">
+        <i class="bi bi-pencil-square text-[15px]" aria-hidden="true"></i>
+        Examen
+      </button>
+    </nav>
+
+    <!-- ============================================
+         CONTENU ONGLET COURS
+         ============================================ -->
+    <div *ngIf="activeTab() === 'cours'" class="flex flex-col gap-3">
+
+      <article
+        class="ui-card group overflow-hidden transition-shadow hover:shadow-[0_14px_30px_-18px_rgba(16,24,40,0.3)]"
         *ngFor="let chapter of chapters()">
 
         <!-- Ligne principale -->
-        <div class="chapter-main" (click)="toggleChapter(chapter.id)">
-          <div class="chapter-toggle">
-            <span class="toggle-icon" [class.expanded]="isExpanded(chapter.id)">›</span>
+        <div class="flex cursor-pointer items-center gap-4 px-4 py-4 md:px-5" (click)="toggleChapter(chapter.id)">
+          <i
+            class="bi bi-chevron-right flex-none text-[18px] text-[#98a2b3] transition-transform duration-200"
+            [class.rotate-90]="isExpanded(chapter.id)"
+            aria-hidden="true"></i>
+
+          <span class="grid h-9 w-9 flex-none place-items-center rounded-xl bg-[#f2f4f7] text-[13.5px] font-bold text-[#667085]">{{ chapter.number }}</span>
+
+          <div class="min-w-0 flex-1">
+            <h3 class="text-[15px] font-bold text-[#101828]">{{ chapter.title }}</h3>
+            <div class="mt-1.5 flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center gap-1.5 rounded-lg bg-[#eef2ff] px-2.5 py-1 text-[12px] font-semibold text-[#4f46e5]">
+                <i class="bi bi-play-circle" aria-hidden="true"></i>{{ chapter.videosCount }} Vidéos
+              </span>
+              <span class="inline-flex items-center gap-1.5 rounded-lg bg-[#fef2f2] px-2.5 py-1 text-[12px] font-semibold text-[#ef4444]">
+                <i class="bi bi-file-earmark-text" aria-hidden="true"></i>{{ chapter.pdfsCount }} PDF
+              </span>
+            </div>
           </div>
 
-          <div class="chapter-number">{{ chapter.number }}</div>
-
-          <div class="chapter-info">
-            <h3 class="chapter-title">{{ chapter.title }}</h3>
-            <span class="chapter-resources-summary">
-              <span class="resource-chip resource-chip-video">🎬 {{ chapter.videosCount }} Vidéos</span>
-              <span class="resource-chip resource-chip-pdf">📄 {{ chapter.pdfsCount }} PDF</span>
-            </span>
-          </div>
-
-          <span class="edit-icon">✏️</span>
+          <i
+            *ngIf="isEnseignant"
+            class="bi bi-pencil-square flex-none text-[16px] text-[#98a2b3] opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100"
+            aria-hidden="true"></i>
         </div>
 
         <!-- Contenu déplié : comparatif Vidéos / PDF -->
-        <div class="chapter-expanded" *ngIf="isExpanded(chapter.id)" (click)="$event.stopPropagation()">
+        <div *ngIf="isExpanded(chapter.id)" class="border-t border-[var(--ui-line)] px-4 py-4 md:px-5" (click)="$event.stopPropagation()">
 
           <!-- Message d'erreur -->
-          <div class="upload-error" *ngIf="uploadError(chapter.id) as err">
-            ⚠️ {{ err }}
+          <div
+            *ngIf="uploadError(chapter.id) as err"
+            class="mb-4 flex items-start gap-2 rounded-xl border border-[#fecdca] bg-[#fef3f2] px-3.5 py-2.5 text-[13px] font-semibold leading-snug text-[#d92d20]">
+            <i class="bi bi-exclamation-triangle-fill mt-0.5" aria-hidden="true"></i>
+            {{ err }}
           </div>
 
           <!-- Sélecteur de type de ressource -->
-          <div class="resource-switch">
+          <div class="mb-4 flex flex-wrap gap-2">
             <button
-              class="resource-switch-btn"
-              [class.active]="getResourceView(chapter.id) === 'video'"
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] font-bold transition"
+              [ngClass]="getResourceView(chapter.id) === 'video'
+                ? 'border-[#4f46e5] bg-[#4f46e5] text-white'
+                : 'border-[var(--ui-line)] bg-white text-[#667085] hover:border-[#d0d5dd]'"
               (click)="setResourceView(chapter.id, 'video')">
-              🎬 Vidéos
-              <span class="resource-switch-count">{{ chapter.videosCount }}</span>
+              <i class="bi bi-play-circle" aria-hidden="true"></i>
+              Vidéos
+              <span
+                class="rounded-md px-1.5 py-0.5 text-[11px] font-bold"
+                [ngClass]="getResourceView(chapter.id) === 'video' ? 'bg-white/20' : 'bg-[#eaecf5] text-[#475467]'">{{ chapter.videosCount }}</span>
             </button>
             <button
-              class="resource-switch-btn"
-              [class.active]="getResourceView(chapter.id) === 'pdf'"
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] font-bold transition"
+              [ngClass]="getResourceView(chapter.id) === 'pdf'
+                ? 'border-[#4f46e5] bg-[#4f46e5] text-white'
+                : 'border-[var(--ui-line)] bg-white text-[#667085] hover:border-[#d0d5dd]'"
               (click)="setResourceView(chapter.id, 'pdf')">
-              📄 PDF
-              <span class="resource-switch-count">{{ chapter.pdfsCount }}</span>
+              <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+              PDF
+              <span
+                class="rounded-md px-1.5 py-0.5 text-[11px] font-bold"
+                [ngClass]="getResourceView(chapter.id) === 'pdf' ? 'bg-white/20' : 'bg-[#eaecf5] text-[#475467]'">{{ chapter.pdfsCount }}</span>
             </button>
           </div>
 
           <!-- Liste des vidéos -->
-          <div class="resource-list" *ngIf="getResourceView(chapter.id) === 'video'">
+          <div *ngIf="getResourceView(chapter.id) === 'video'" class="flex flex-col gap-2">
             <div
-              class="resource-item resource-item-video"
+              class="flex items-center gap-3 rounded-xl border border-[var(--ui-line)] bg-[#fafaff] px-3 py-2.5 transition hover:border-[#d0d5dd] hover:bg-white"
               *ngFor="let v of buildRange(chapter.videosCount); let i = index">
               <a
-                class="resource-item-link"
+                class="flex min-w-0 flex-1 items-center gap-3"
                 [href]="getVideoUrl(chapter, i)"
                 target="_blank"
                 rel="noopener noreferrer"
                 (click)="$event.stopPropagation()">
-                <span class="resource-icon">▶</span>
-                <span class="resource-name">{{ getVideoName(chapter.id, i) }}</span>
-                <span class="resource-meta">Regarder ↗</span>
+                <span class="grid h-8 w-8 flex-none place-items-center rounded-lg bg-[#eef2ff] text-[13px] text-[#4f46e5]">
+                  <i class="bi bi-play-fill" aria-hidden="true"></i>
+                </span>
+                <span class="min-w-0 flex-1 truncate text-[14px] font-semibold text-[#344054] transition-colors hover:text-[#4f46e5]">{{ getVideoName(chapter.id, i) }}</span>
+                <span class="hidden flex-none items-center gap-1 text-[12.5px] font-bold text-[#4f46e5] sm:inline-flex">
+                  Regarder <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                </span>
               </a>
               <button
-                class="resource-delete"
+                *ngIf="isEnseignant"
+                type="button"
+                class="ui-icon-btn ui-icon-btn--danger"
                 (click)="deleteResource(chapter.id, 'video', i); $event.stopPropagation()"
-                title="Supprimer">
-                🗑️
+                title="Supprimer"
+                aria-label="Supprimer">
+                <i class="bi bi-trash" aria-hidden="true"></i>
               </button>
             </div>
-            <div class="resource-empty" *ngIf="chapter.videosCount === 0">
+            <div *ngIf="chapter.videosCount === 0" class="rounded-xl border border-dashed border-[#e4e7ec] bg-white px-4 py-6 text-center text-[13.5px] font-medium text-[#98a2b3]">
               Aucune vidéo pour l'instant.
             </div>
           </div>
 
           <!-- Liste des PDF -->
-          <div class="resource-list" *ngIf="getResourceView(chapter.id) === 'pdf'">
+          <div *ngIf="getResourceView(chapter.id) === 'pdf'" class="flex flex-col gap-2">
             <div
-              class="resource-item resource-item-pdf"
+              class="flex items-center gap-3 rounded-xl border border-[var(--ui-line)] bg-[#fafaff] px-3 py-2.5 transition hover:border-[#d0d5dd] hover:bg-white"
               *ngFor="let p of buildRange(chapter.pdfsCount); let i = index">
               <a
-                class="resource-item-link"
+                class="flex min-w-0 flex-1 items-center gap-3"
                 [href]="getPdfUrl(chapter, i)"
                 target="_blank"
                 rel="noopener noreferrer"
                 (click)="$event.stopPropagation()">
-                <span class="resource-icon">📄</span>
-                <span class="resource-name">{{ getPdfName(chapter.id, i) }}</span>
-                <span class="resource-meta">Ouvrir ↗</span>
+                <span class="grid h-8 w-8 flex-none place-items-center rounded-lg bg-[#fef2f2] text-[13px] text-[#ef4444]">
+                  <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
+                </span>
+                <span class="min-w-0 flex-1 truncate text-[14px] font-semibold text-[#344054] transition-colors hover:text-[#4f46e5]">{{ getPdfName(chapter.id, i) }}</span>
+                <span class="hidden flex-none items-center gap-1 text-[12.5px] font-bold text-[#4f46e5] sm:inline-flex">
+                  Ouvrir <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                </span>
               </a>
               <button
-                class="resource-delete"
+                *ngIf="isEnseignant"
+                type="button"
+                class="ui-icon-btn ui-icon-btn--danger"
                 (click)="deleteResource(chapter.id, 'pdf', i); $event.stopPropagation()"
-                title="Supprimer">
-                🗑️
+                title="Supprimer"
+                aria-label="Supprimer">
+                <i class="bi bi-trash" aria-hidden="true"></i>
               </button>
             </div>
-            <div class="resource-empty" *ngIf="chapter.pdfsCount === 0">
+            <div *ngIf="chapter.pdfsCount === 0" class="rounded-xl border border-dashed border-[#e4e7ec] bg-white px-4 py-6 text-center text-[13.5px] font-medium text-[#98a2b3]">
               Aucun PDF pour l'instant.
             </div>
           </div>
 
         </div>
 
+      </article>
+    </div>
+
+    <!-- ============================================
+         CONTENU ONGLET EXAMEN
+         ============================================ -->
+    <div *ngIf="activeTab() === 'examen'" class="ui-card p-5 md:p-6">
+
+      <!-- Message si aucun quiz -->
+      <div *ngIf="!loadingExam() && quizList().length === 0 && !quizError()" class="flex flex-col items-center px-4 py-12 text-center">
+        <span class="ui-icon-tile mb-4 h-14 w-14 rounded-2xl text-[24px]">
+          <i class="bi bi-clipboard-data" aria-hidden="true"></i>
+        </span>
+        <h2 class="text-[18px] font-bold text-[#101828]">Aucun quiz disponible</h2>
+        <p class="mt-1.5 max-w-[430px] text-[13.5px] leading-relaxed text-[#667085]">Les quiz générés automatiquement à partir des PDF et vidéos apparaîtront ici.</p>
+      </div>
+
+      <!-- Erreur -->
+      <div *ngIf="quizError() as err" class="flex flex-col items-center px-4 py-10 text-center">
+        <span class="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-[#fef3f2] text-[20px] text-[#f04438]">
+          <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+        </span>
+        <p class="text-[14px] font-semibold text-[#d92d20]">{{ err }}</p>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="loadingExam()" class="flex flex-col items-center px-4 py-12 text-center">
+        <span class="mb-3 h-9 w-9 animate-spin rounded-full border-[3px] border-[#eaecf5] border-t-[#6366f1]" aria-hidden="true"></span>
+        <p class="text-[14px] font-medium text-[#667085]">Chargement des quiz...</p>
+      </div>
+
+      <!-- Liste des quiz -->
+      <div *ngIf="!loadingExam() && quizList().length > 0">
+        <h2 class="mb-4 text-[17px] font-extrabold text-[#101828]">Quiz disponibles</h2>
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <article
+            class="flex flex-col rounded-2xl border border-[var(--ui-line)] bg-[#fafaff] p-4 transition hover:border-[#6366f1]/45 hover:shadow-[0_12px_26px_-18px_rgba(99,102,241,0.65)]"
+            *ngFor="let q of quizList()">
+            <div class="mb-3 flex items-center justify-between gap-2">
+              <span class="ui-badge ui-badge--info">QCM</span>
+              <span class="ui-badge" [ngClass]="q.methode_generation === 'auto' ? 'ui-badge--ok' : 'ui-badge--warn'">
+                {{ q.methode_generation === 'openai' ? 'IA' : 'Auto' }}
+              </span>
+            </div>
+            <h3 class="text-[15px] font-bold text-[#101828]">{{ q.titre }}</h3>
+            <p class="mb-3 mt-1.5 text-[13px] leading-relaxed text-[#667085]">{{ q.description }}</p>
+
+            <!-- Auteur du quiz (admin ou enseignant) -->
+            <div *ngIf="q.createur_nom || q.createur_prenom" class="mb-3 flex items-center gap-2.5 rounded-xl border border-[#eef2f7] bg-[#f8fafc] px-2.5 py-2">
+              <span class="grid h-[30px] w-[30px] flex-none place-items-center rounded-full bg-[#4f46e5] text-[12px] font-bold text-white">{{ getAuthorInitials(q) }}</span>
+              <div class="min-w-0">
+                <span class="block truncate text-[12.5px] font-semibold leading-tight text-[#344054]">{{ getAuthorName(q) }}</span>
+                <span class="block text-[11px] capitalize text-[#667085]">{{ getAuthorRole(q) }}</span>
+              </div>
+            </div>
+
+            <div class="mb-3 flex items-center justify-between text-[12px] font-medium text-[#98a2b3]">
+              <span>{{ q.nombre_questions }} questions</span>
+              <span *ngIf="q.created_at">Créé le {{ q.created_at | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <button type="button" class="ui-btn mt-auto w-full" (click)="startQuiz(q.id)">
+              Commencer le quiz
+            </button>
+          </article>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- ============================================
-       CONTENU ONGLET EXAMEN
-       ============================================ -->
-  <div class="tab-content" *ngIf="activeTab() === 'examen'">
-    <div class="examen-placeholder">
-      <span class="examen-icon">📝</span>
-      <h2>Examen à venir</h2>
-      <p>Les examens seront disponibles prochainement.</p>
-    </div>
   </div>
 </div>

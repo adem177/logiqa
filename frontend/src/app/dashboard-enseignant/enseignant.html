@@ -1,126 +1,252 @@
-<header class="topbar">
-  <div class="logo">
-    <div class="logo-icon">🎓</div>
-    LOGIQA
-    <span class="role-badge">ESPACE ENSEIGNANT</span>
-  </div>
-
-  <div class="topbar-actions">
-    <!-- MENU PROFILE DÉROULANT -->
-    <div class="profile-dropdown" [class.open]="isProfileOpen">
-      <button class="profile-toggle" (click)="toggleProfile($event)" type="button">
-        <span class="profile-avatar">{{ teacherInitials }}</span>
-        <span class="profile-name">{{ teacherName }}</span>
-        <span class="arrow">▾</span>
+<div class="ui-page pt-14">
+  <!-- ===== TOPBAR ===== -->
+  <header class="sticky top-14 z-40 flex items-center justify-between border-b border-[var(--ui-line)] bg-white/85 px-4 py-3 backdrop-blur-md md:px-8">
+    <div class="flex items-center gap-2.5">
+      <button
+        type="button"
+        class="flex items-center gap-2.5"
+        (click)="askLogout()"
+        title="Se déconnecter"
+        aria-label="LOGIQA - Se déconnecter">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white">
+          <i class="bi bi-mortarboard text-[15px]" aria-hidden="true"></i>
+        </span>
+        <span class="text-[17px] font-extrabold tracking-tight text-[#101828]">LOGIQA</span>
       </button>
-
-      <div class="profile-menu" *ngIf="isProfileOpen">
-        <div class="profile-menu-header">
-          <span class="profile-avatar large">{{ teacherInitials }}</span>
-          <div>
-            <div class="profile-menu-name">{{ teacherName }} {{ teacherLastName }}</div>
-            <div class="profile-menu-email">{{ teacherEmail }}</div>
-          </div>
-        </div>
-        <a routerLink="/enseignant/profil" (click)="closeProfile()">Mon profil</a>
-      </div>
+      <span class="rounded-full border border-[#6366f1]/20 bg-[#6366f1]/10 px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#4f46e5]">ESPACE ENSEIGNANT</span>
     </div>
 
-    <button class="home-btn" (click)="goHome()" title="Retour à l'accueil" type="button">⌂</button>
-  </div>
-</header>
+    <div class="flex items-center gap-3">
+      <!-- MENU PROFILE DÉROULANT -->
+      <div class="profile-dd relative" [class.open]="isProfileOpen">
+        <button class="flex items-center gap-2 rounded-full border border-[var(--ui-line)] bg-white py-1.5 pl-1.5 pr-3 text-[13px] font-semibold text-[#344054] transition hover:border-[#6366f1]/45 hover:text-[#4f46e5]" (click)="toggleProfile($event)" type="button">
+          <span class="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-[10.5px] font-bold text-white">{{ teacherInitials }}</span>
+          <span class="max-w-[130px] truncate">{{ teacherName }}</span>
+          <i class="bi bi-chevron-down text-[12px] text-[#98a2b3]" aria-hidden="true"></i>
+        </button>
 
-<main>
-  <div class="top-row">
-    <div class="welcome-section">
-      <div class="welcome">Bienvenue professeur {{ teacherName }} 👨‍🏫</div>
-      <h1>Votre tableau de bord</h1>
-    </div>
-  </div>
-
-  <!-- STATISTIQUES -->
-  <div class="stats-grid">
-    @for (stat of stats(); track stat.title) {
-      <div class="stat-card">
-        <div class="stat-icon" [ngClass]="stat.iconClass">{{ stat.icon }}</div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stat.value }}</div>
-          <div class="stat-title">{{ stat.title }}</div>
-          <div class="stat-sub" [class.muted]="stat.subMuted">{{ stat.sub }}</div>
-        </div>
-      </div>
-    }
-  </div>
-
-  <!-- PANNEAUX COURS & ACTIVITÉ -->
-  <div class="panels">
-
-    <!-- SECTION MES COURS -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Mes cours</div>
-        <div class="panel-actions">
-          @if (courses().length > 0) {
-            <button class="cta-btn-sm" (click)="onCreateCourse()" type="button">+ Créer un cours</button>
-            <a routerLink="/cours" class="link-btn">Voir tout</a>
-          }
-        </div>
-      </div>
-
-      <!-- État vide -->
-      @if (courses().length === 0) {
-        <div class="empty-state">
-          <div class="empty-emoji">📚</div>
-          <div class="empty-title">Aucun cours publié</div>
-          <div class="empty-text">
-            Partagez votre savoir-faire et créez votre première formation dès aujourd'hui.
-          </div>
-          <button class="cta-btn" (click)="onCreateCourse()" type="button">Créer un cours</button>
-        </div>
-      }
-
-      <!-- Liste des cours -->
-      @if (courses().length > 0) {
-        <div class="course-list">
-          @for (course of courses(); track course.id) {
-            <div class="course-row">
-              <img [src]="course.thumbnail" [alt]="course.title" class="course-thumb">
-              <div class="course-info">
-                <div class="course-title">{{ course.title }}</div>
+        <div class="menu-pop absolute right-0 top-[calc(100%+10px)] z-50 w-64 rounded-2xl border border-[var(--ui-line)] bg-white p-2 shadow-[0_20px_50px_-20px_rgba(16,24,40,0.35)]" *ngIf="isProfileOpen">
+          <div class="menu-user-card">
+            <div class="flex items-center gap-2.5">
+              <span class="grid h-9 w-9 flex-none place-items-center rounded-full bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-[11px] font-bold text-white">{{ teacherInitials }}</span>
+              <div class="min-w-0">
+                <div class="menu-user-name truncate">{{ teacherName }} {{ teacherLastName }}</div>
+                <div class="truncate text-[11.5px] text-[#667085]">{{ teacherEmail }}</div>
               </div>
             </div>
-          }
+          </div>
+          <a routerLink="/profil" (click)="closeProfile()" class="menu-item">
+            <i class="bi bi-person text-[15px]" aria-hidden="true"></i>Mon profil
+          </a>
         </div>
-      }
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-[1300px] px-4 py-8 md:px-10 md:py-10">
+    <div class="mb-8 flex flex-wrap items-end justify-between gap-5">
+      <div class="welcome-section">
+        <div class="welcome flex items-center gap-2 text-[13.5px] font-semibold text-[#667085]">
+          Bienvenue professeur {{ teacherName }}
+          <i class="bi bi-person-workspace text-[16px] text-[#6366f1]" aria-hidden="true"></i>
+        </div>
+        <h1 class="ui-title mt-2 text-[26px]">Votre tableau de bord</h1>
+      </div>
     </div>
 
-    <!-- SECTION ACTIVITÉ RÉCENTE -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Activité récente</div>
-      </div>
-
-      @if (activities.length === 0) {
-        <div class="empty-state activity-empty">
-          <div class="empty-emoji">🕊️</div>
-          <div class="empty-title small">Aucune activité pour l'instant.</div>
-          <div class="empty-text no-margin">
-            Elle apparaîtra ici dès que vos étudiants commenceront à interagir avec vos cours.
+    <!-- STATISTIQUES -->
+    <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
+      @for (stat of stats; track stat.title) {
+        <div class="ui-stat">
+          <span class="ui-icon-tile h-[46px] w-[46px] rounded-[13px] text-[20px]" [ngClass]="stat.iconClass">
+            <i class="bi" [ngClass]="stat.iconClass === 'icon-blue' ? 'bi-journal-text' : 'bi-file-earmark-text'" aria-hidden="true"></i>
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="text-[24px] font-extrabold leading-none tracking-tight text-[#101828]">{{ stat.value }}</div>
+            <div class="mt-1.5 text-[13px] font-semibold text-[#344054]">{{ stat.title }}</div>
+            <div class="ui-stat-sub mt-1" [class.muted]="stat.subMuted">{{ stat.sub }}</div>
           </div>
         </div>
       }
-
-      @if (activities.length > 0) {
-        <ul class="activity-list">
-          @for (item of activities; track item.id) {
-            <li>
-              <span class="activity-text">{{ item.text }}</span>
-              <span class="activity-date">{{ item.date }}</span>
-            </li>
-          }
-        </ul>
-      }
     </div>
 
+    <!-- PANNEAUX COURS & ACTIVITÉ -->
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1.5fr_1fr]">
+
+      <!-- SECTION MES COURS -->
+      <div class="ui-card p-5">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div class="text-[15px] font-bold text-[#101828]">Mes cours</div>
+          <div class="flex flex-wrap items-center gap-2">
+            @if (coursList().length > 0) {
+              <button class="ui-btn ui-btn--soft px-3 py-2 text-[12.5px]" (click)="onGenererQuiz()" type="button">+ Générer un Quiz</button>
+              <button class="ui-btn ui-btn--soft px-3 py-2 text-[12.5px]" (click)="onCreateCourse()" type="button">+ Créer un cours</button>
+            }
+          </div>
+        </div>
+
+        <!-- Liste des cours -->
+        @if (coursList().length > 0 && !loading()) {
+          <div class="flex flex-col gap-3">
+            @for (course of coursList(); track course.id) {
+              <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--ui-line)] bg-[#fafaff] px-4 py-3.5 transition hover:border-[#6366f1]/30 hover:bg-white hover:shadow-[0_10px_24px_-16px_rgba(16,24,40,0.35)]">
+                <div class="min-w-0">
+                  <div class="text-[14px] font-bold text-[#101828]">{{ course.titre }}</div>
+                  <div class="mt-1.5 flex flex-wrap items-center gap-2">
+                    <span class="ui-badge ui-badge--info px-2.5 py-1 text-[10.5px]">{{ course.categorie || 'Général' }}</span>
+                    <span class="text-[11.5px] font-medium text-[#98a2b3]">{{ course.nb_chapitres || 0 }} chapitre(s)</span>
+                  </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <button class="inline-flex items-center gap-1.5 rounded-lg border border-[#6366f1]/20 bg-[#eef2ff] px-2.5 py-1.5 text-[12px] font-bold text-[#4f46e5] transition hover:bg-[#6366f1] hover:text-white" (click)="viewCours(course.id)" title="Consulter le cours" type="button">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                    Consulter
+                  </button>
+                  <button class="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[12px] font-bold text-amber-600 transition hover:bg-amber-500 hover:text-white" (click)="editCours(course)" title="Modifier le cours" type="button">
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                    Modifier
+                  </button>
+                  <button class="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[12px] font-bold text-rose-500 transition hover:bg-rose-500 hover:text-white" (click)="confirmDelete(course)" title="Supprimer le cours" type="button">
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Chargement -->
+        @if (loading()) {
+          <div class="flex flex-col items-center py-10 text-center">
+            <span class="ui-icon-tile h-12 w-12 rounded-2xl text-[20px]"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span>
+            <div class="mt-3.5 text-[14px] font-bold text-[#344054]">Chargement de vos cours...</div>
+          </div>
+        }
+
+        <!-- État vide -->
+        @if (coursList().length === 0 && !loading()) {
+          <div class="flex flex-col items-center py-8 text-center">
+            <span class="ui-icon-tile h-14 w-14 rounded-2xl text-[24px]"><i class="bi bi-bookshelf" aria-hidden="true"></i></span>
+            <div class="mt-3.5 text-[15px] font-bold text-[#101828]">Aucun cours publié</div>
+            <div class="mt-1.5 max-w-sm text-[13px] leading-relaxed text-[#667085]">
+              Partagez votre savoir-faire et créez votre première formation dès aujourd'hui.
+            </div>
+            <div class="mt-5 flex flex-wrap justify-center gap-3">
+              <button class="ui-btn" (click)="onCreateCourse()" type="button">Créer un cours</button>
+              <button class="ui-btn ui-btn--ghost" (click)="onGenererQuiz()" type="button">Générer un Quiz</button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- SECTION ACTIVITÉ RÉCENTE -->
+      <div class="ui-card p-5">
+        <div class="mb-4 text-[15px] font-bold text-[#101828]">Activité récente</div>
+
+        @if (activities.length === 0) {
+          <div class="flex flex-col items-center py-8 text-center">
+            <span class="ui-icon-tile h-12 w-12 rounded-2xl text-[20px]"><i class="bi bi-stars" aria-hidden="true"></i></span>
+            <div class="mt-3.5 text-[14px] font-bold text-[#344054]">Aucune activité pour l'instant.</div>
+            <div class="mt-1.5 max-w-xs text-[12.5px] leading-relaxed text-[#667085]">
+              Elle apparaîtra ici dès que vos étudiants commenceront à interagir avec vos cours.
+            </div>
+          </div>
+        }
+
+        @if (activities.length > 0) {
+          <ul class="flex flex-col">
+            @for (item of activities; track item.id) {
+              <li class="flex items-start justify-between gap-3 border-b border-[var(--ui-line)] py-3 last:border-b-0">
+                <span class="text-[13px] font-medium text-[#344054]">{{ item.text }}</span>
+                <span class="flex-none text-[11.5px] font-semibold text-[#98a2b3]">{{ item.date }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ===== MODAL ÉDITION ===== -->
+@if (showEditForm && editingCours) {
+  <div class="fixed inset-0 z-[150] grid place-items-center bg-[#101828]/45 p-4 backdrop-blur-sm" (click)="cancelEdit()">
+    <div class="ui-card w-full max-w-lg p-6" (click)="$event.stopPropagation()">
+      <h3 class="ui-title mb-4 flex items-center gap-2 text-[16px]">
+        <i class="bi bi-pencil-square text-[16px] text-[#6366f1]" aria-hidden="true"></i>Modifier le cours
+      </h3>
+
+      <div class="grid gap-4">
+        <div>
+          <label for="edit-titre" class="mb-1.5 block text-[12.5px] font-semibold text-[#344054]">Titre *</label>
+          <input id="edit-titre" type="text" [(ngModel)]="editData.titre" placeholder="Titre du cours" class="ui-input" />
+        </div>
+
+        <div>
+          <label for="edit-desc" class="mb-1.5 block text-[12.5px] font-semibold text-[#344054]">Description *</label>
+          <textarea id="edit-desc" [(ngModel)]="editData.description" rows="3" placeholder="Description du cours" class="ui-input resize-y"></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label for="edit-cat" class="mb-1.5 block text-[12.5px] font-semibold text-[#344054]">Catégorie</label>
+            <input id="edit-cat" type="text" [(ngModel)]="editData.categorie" placeholder="Ex : Informatique" class="ui-input" />
+          </div>
+          <div>
+            <label for="edit-niveau" class="mb-1.5 block text-[12.5px] font-semibold text-[#344054]">Niveau</label>
+            <select id="edit-niveau" [(ngModel)]="editData.niveau" class="ui-input">
+              <option value="Débutant">Débutant</option>
+              <option value="Intermédiaire">Intermédiaire</option>
+              <option value="Avancé">Avancé</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap justify-end gap-3 pt-1">
+          <button class="ui-btn" (click)="saveEdit()" [disabled]="saving()" type="button">
+            <span *ngIf="saving()" class="flex items-center gap-2"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Enregistrement...</span>
+            <span *ngIf="!saving()" class="flex items-center gap-2"><i class="bi bi-check-circle" aria-hidden="true"></i>Enregistrer</span>
+          </button>
+          <button class="ui-btn ui-btn--ghost" (click)="cancelEdit()" type="button">Annuler</button>
+        </div>
+      </div>
+    </div>
   </div>
-</main>
+}
+
+<!-- ===== MODAL CONFIRMATION SUPPRESSION ===== -->
+@if (coursToDelete) {
+  <div class="fixed inset-0 z-[150] grid place-items-center bg-[#101828]/45 p-4 backdrop-blur-sm" (click)="cancelDelete()">
+    <div class="ui-card w-full max-w-md p-6" (click)="$event.stopPropagation()">
+      <h3 class="ui-title mb-3 flex items-center gap-2 text-[16px]">
+        <i class="bi bi-trash text-[16px] text-[#f04438]" aria-hidden="true"></i>Supprimer le cours
+      </h3>
+      <p class="text-[13.5px] leading-relaxed text-[#667085]">
+        Voulez-vous vraiment supprimer le cours <strong class="font-bold text-[#101828]">« {{ coursToDelete.titre }} »</strong> ?
+        Cette action est irréversible.
+      </p>
+      <div class="mt-5 flex flex-wrap justify-end gap-3">
+        <button class="ui-btn ui-btn--danger" (click)="deleteCours()" [disabled]="deleting()" type="button">
+          <span *ngIf="deleting()" class="flex items-center gap-2"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Suppression...</span>
+          <span *ngIf="!deleting()" class="flex items-center gap-2"><i class="bi bi-trash" aria-hidden="true"></i>Supprimer</span>
+        </button>
+        <button class="ui-btn ui-btn--ghost" (click)="cancelDelete()" type="button">Annuler</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ===== TOAST NOTIFICATION ===== -->
+@if (toastMessage()) {
+  <div class="ui-toast" [class.success]="toastType() === 'success'" [class.error]="toastType() === 'error'">
+    {{ toastMessage() }}
+  </div>
+}
+
+<!-- Fenêtre de confirmation affichée avant la déconnexion (clic sur le logo) -->
+<app-logout-confirm
+  *ngIf="showLogoutConfirm"
+  (confirmed)="confirmLogout()"
+  (cancelled)="showLogoutConfirm = false"></app-logout-confirm>

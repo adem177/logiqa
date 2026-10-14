@@ -1,20 +1,20 @@
-import { Component, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Router, RouterLink } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { Subject, EMPTY } from 'rxjs';
 import { takeUntil, timeout, catchError, finalize } from 'rxjs/operators';
 import { environment } from '../../environments/environements';
+import { Auth } from '../core/auth';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
-  templateUrl: './login.html',
-  styleUrls: ['./login.css']
+  templateUrl: './login.html'
 })
-export class LoginComponent implements OnDestroy {
+export class LoginComponent implements OnInit, OnDestroy {
   login: string = '';
   password: string = '';
   captchaInput: string = '';
@@ -27,6 +27,7 @@ export class LoginComponent implements OnDestroy {
   emailDisplay: string = '';
   isVerifying: boolean = false;
   isResending: boolean = false;
+  showPassword: boolean = false;
 
   timer: number = 300;
   timerInterval: any = null;
@@ -43,9 +44,28 @@ export class LoginComponent implements OnDestroy {
   constructor(
     private http: HttpClient,
     private router: Router,
+    private route: ActivatedRoute,
+    private auth: Auth,
     private cdr: ChangeDetectorRef   // ← AJOUTÉ
   ) {
     this.refreshCaptcha();
+  }
+
+  /**
+   * Si l'utilisateur est déjà connecté (token valide) et qu'il atterrit sur
+   * /login (ex: redirection SSR d'une URL protégée), on le renvoie directement
+   * vers sa destination ou son espace.
+   */
+  ngOnInit(): void {
+    if (this.auth.isLoggedIn()) {
+      const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+      if (returnUrl && returnUrl.startsWith('/') &&
+          !returnUrl.startsWith('/login') && !returnUrl.startsWith('/inscription')) {
+        this.router.navigateByUrl(returnUrl);
+      } else {
+        this.redirectByRole(this.auth.getRole() ?? undefined);
+      }
+    }
   }
 
   ngOnDestroy(): void {
@@ -62,6 +82,10 @@ export class LoginComponent implements OnDestroy {
 
   isValidEmail(): boolean {
     return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(this.login.trim());
+  }
+
+  togglePassword(): void {
+    this.showPassword = !this.showPassword;
   }
 
   maskEmail(email: string): string {
@@ -167,6 +191,15 @@ export class LoginComponent implements OnDestroy {
       })
     ).subscribe({
       next: (response: any) => {
+        // Connexion directe (comptes admin) : le token est déjà délivré,
+        // aucune vérification par code n'est nécessaire.
+        if (response?.token && response?.user) {
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('user', JSON.stringify(response.user));
+          this.redirectByRole(response.user?.role);
+          return;
+        }
+
         if (!response?.user_id) {
           this.errorMessage = 'Réponse du serveur invalide.';
           this.errorVisible = true;
@@ -340,17 +373,31 @@ export class LoginComponent implements OnDestroy {
   }
 
   private redirectByRole(role: string | undefined): void {
+    // Si l'utilisateur a été redirigé vers login depuis une page protégée,
+    // on le ramène à cette page après connexion (si son rôle y donne accès).
+    const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+    if (returnUrl && returnUrl.startsWith('/')) {
+      // Ne pas renvoyer vers les pages d'authentification
+      if (!returnUrl.startsWith('/login') && !returnUrl.startsWith('/inscription')) {
+        this.router.navigateByUrl(returnUrl);
+        return;
+      }
+    }
+
     switch (role) {
       case 'etudiant':
       case 'student':
-        this.router.navigate(['/matiere']);
+        this.router.navigate(['/cours']);
         break;
       case 'enseignant':
       case 'teacher':
         this.router.navigate(['/dashboard-enseignant']);
         break;
+      case 'admin':
+        this.router.navigate(['/dashboard-admin']);
+        break;
       default:
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/']);
         break;
     }
   }

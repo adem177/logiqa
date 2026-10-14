@@ -5,6 +5,8 @@ import { HttpClient, HttpEventType, HttpErrorResponse } from '@angular/common/ht
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { COURSES_DETAILS, CourseDetail, Chapter } from '../data/course-data';
 import { CourseService, Course as StoredCourse } from '../services/course.service';
+import { QuizService, Quiz } from '../services/quiz.service';
+import { Auth } from '../core/auth';
 
 type TabKey = 'cours' | 'examen';
 type ResourceType = 'video' | 'pdf';
@@ -24,8 +26,7 @@ interface ResourceItem {
   selector: 'app-cours-content',
   standalone: true,
   imports: [CommonModule, RouterModule],
-  templateUrl: './matiere.html',
-  styleUrls: ['./matiere.css']
+  templateUrl: './matiere.html'
 })
 export class CoursContentComponent implements OnInit {
   private route = inject(ActivatedRoute);
@@ -33,6 +34,7 @@ export class CoursContentComponent implements OnInit {
   private courseService = inject(CourseService);
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
+  private auth = inject(Auth);
 
   private readonly API_URL = 'http://localhost:3000';
   private readonly UPLOAD_ENDPOINT = `${this.API_URL}/api/chapitres`;
@@ -53,16 +55,51 @@ export class CoursContentComponent implements OnInit {
   examenUrl = signal<string | null>(null);
   examenUrlSafe = signal<SafeResourceUrl | null>(null);
   examenTitle = signal<string>('');
-  loadingExamen = signal<boolean>(false);
+  loadingExam = signal<boolean>(false); // ← renommé (avant : loadingExamen)
   loadingCourse = signal<boolean>(true);
 
+  // Signaux Quiz
+  quizList = signal<Quiz[]>([]);
+  quizError = signal<string | null>(null);
+  private quizService = inject(QuizService);
+
+  // Rôle de l'utilisateur : seuls enseignants/admins voient les boutons d'édition
+  isEnseignant = false;
+
+  /** Nom complet de l'auteur d'un quiz */
+  getAuthorName(q: Quiz): string {
+    const prenom = q.createur_prenom || '';
+    const nom = q.createur_nom || '';
+    return `${prenom} ${nom}`.trim() || 'Inconnu';
+  }
+
+  /** Rôle lisible de l'auteur (admin ou enseignant) */
+  getAuthorRole(q: Quiz): string {
+    switch (q.createur_role) {
+      case 'admin': return 'Administrateur';
+      case 'enseignant': return 'Enseignant';
+      default: return 'Membre';
+    }
+  }
+
+  /** Initiales de l'auteur pour l'avatar */
+  getAuthorInitials(q: Quiz): string {
+    const p = (q.createur_prenom || '').charAt(0);
+    const n = (q.createur_nom || '').charAt(0);
+    return (p + n).toUpperCase() || '?';
+  }
+
   ngOnInit(): void {
+    this.isEnseignant = this.auth.hasRole(['enseignant', 'admin']);
+
     const paramId = this.route.snapshot.paramMap.get('id');
 
     if (paramId) {
       this.loadCourseData(paramId);
     } else {
+      // Route /matiere sans :id → jamais de page vide : renvoyer au catalogue.
       this.loadingCourse.set(false);
+      this.router.navigate(['/cours']);
     }
   }
 
@@ -181,27 +218,41 @@ export class CoursContentComponent implements OnInit {
   }
 
   loadExamen(): void {
-    const slug = this.course()?.slug;
-    if (!slug) return;
+    const currentCourse = this.course();
+    if (!currentCourse || currentCourse.chapters.length === 0) return;
 
-    this.loadingExamen.set(true);
-    this.http.get<any>(`${this.API_URL}/api/cours/${slug}/examen`).subscribe({
-      next: (res) => {
-        if (res && res.has_examen && res.url) {
-          const fullUrl = `${this.API_URL}${res.url}`;
-          this.examenUrl.set(fullUrl);
-          this.examenUrlSafe.set(this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl));
-          this.examenTitle.set(res.nom_original);
-        } else {
-          this.examenUrl.set(null);
+    this.loadingExam.set(true);
+    this.quizError.set(null);
+    this.quizList.set([]);
+
+    // Charger les quiz de tous les chapitres du cours
+    const allQuiz: Quiz[] = [];
+    let completed = 0;
+    const totalChapters = currentCourse.chapters.length;
+
+    currentCourse.chapters.forEach(chapter => {
+      this.quizService.listerQuiz(chapter.id).subscribe({
+        next: (quiz) => {
+          allQuiz.push(...quiz);
+          completed++;
+          if (completed === totalChapters) {
+            this.quizList.set(allQuiz);
+            this.loadingExam.set(false);
+          }
+        },
+        error: () => {
+          completed++;
+          if (completed === totalChapters) {
+            this.quizList.set(allQuiz);
+            this.loadingExam.set(false);
+          }
         }
-        this.loadingExamen.set(false);
-      },
-      error: () => {
-        this.examenUrl.set(null);
-        this.loadingExamen.set(false);
-      }
+      });
     });
+  }
+
+  startQuiz(quizId: number): void {
+    this.router.navigate(['/quiz', quizId]);
   }
 
   private convertStoredCourse(course: StoredCourse): {
@@ -278,7 +329,13 @@ export class CoursContentComponent implements OnInit {
   });
 
   goBack(): void {
-    this.router.navigate(['/cours']);
+    // L'enseignant (ou l'admin) qui consulte un cours revient directement sur
+    // son tableau de bord ; l'étudiant retourne au catalogue.
+    if (this.isEnseignant) {
+      this.router.navigate(['/dashboard-enseignant']);
+    } else {
+      this.router.navigate(['/cours']);
+    }
   }
 
   // Gestion des chapitres
@@ -327,22 +384,24 @@ export class CoursContentComponent implements OnInit {
    * 2. Sinon, on retombe sur la convention de nommage statique des fichiers
    *    placés à la main dans public/pdfs/ : chapitreN_index.pdf (index à partir de 1).
    */
-    getPdfUrl(chapter: Chapter, index: number): string {
-  const stored = this.chapterResources().get(chapter.id)?.pdfs[index];
-  if (stored?.url) {
-    return stored.url;
+  getPdfUrl(chapter: Chapter, index: number): string {
+    const stored = this.chapterResources().get(chapter.id)?.pdfs[index];
+    if (stored?.url) {
+      return stored.url;
+    }
+    const slug = this.course()?.slug ?? '';
+    return `/pdfs/${slug}/chapitre${chapter.number}/chapitre${chapter.number}_${index + 1}.pdf`;
   }
-  const slug = this.course()?.slug ?? '';
-  return `/pdfs/${slug}/chapitre${chapter.number}/chapitre${chapter.number}_${index + 1}.pdf`;
-}
-getVideoUrl(chapter: Chapter, index: number): string {
-  const stored = this.chapterResources().get(chapter.id)?.videos[index];
-  if (stored?.url) {
-    return stored.url;
+
+  getVideoUrl(chapter: Chapter, index: number): string {
+    const stored = this.chapterResources().get(chapter.id)?.videos[index];
+    if (stored?.url) {
+      return stored.url;
+    }
+    const slug = this.course()?.slug ?? '';
+    return `/videos/${slug}/chapitre${chapter.number}/chapitre${chapter.number}_${index + 1}.${this.STATIC_VIDEO_EXT}`;
   }
-  const slug = this.course()?.slug ?? '';
-  return `/videos/${slug}/chapitre${chapter.number}/chapitre${chapter.number}_${index + 1}.${this.STATIC_VIDEO_EXT}`;
-}
+
   // Upload de fichiers
   uploadingFileName(chapterId: number): string | null {
     return this.uploadStates().get(chapterId)?.fileName ?? null;

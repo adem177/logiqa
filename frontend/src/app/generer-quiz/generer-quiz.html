@@ -1,0 +1,90 @@
+<div class="generer-quiz-page">
+  <header class="quiz-header">
+    <button class="btn-back" (click)="goBack()">
+      <span class="back-icon">←</span>
+      Retour
+    </button>
+    <h1 class="page-title">Générer un Quiz</h1>
+  </header>
+
+  <div class="quiz-form">
+    <!-- Sélection du cours -->
+    <div class="form-group">
+      <label class="form-label">1. Sélectionnez un cours</label>
+      <div class="course-grid">
+        <button
+          class="course-btn"
+          [class.selected]="selectedCourse()?.id === course.id"
+          *ngFor="let course of courses()"
+          (click)="selectCourse(course)">
+          <span class="course-name">{{ course.title }}</span>
+          <span class="course-chapters">{{ course.chapters.length }} chapitres</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Sélection du chapitre -->
+    <div class="form-group" *ngIf="selectedCourse()">
+      <label class="form-label">2. Sélectionnez un chapitre</label>
+      <div class="chapter-list">
+        <button
+          class="chapter-btn"
+          [class.selected]="selectedChapter()?.id === chapter.id"
+          *ngFor="let chapter of selectedCourse()?.chapters"
+          (click)="selectChapter(chapter)">
+          <span class="chapter-number">{{ chapter.number }}</span>
+          <span class="chapter-title">{{ chapter.title }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Configuration -->
+    <div class="form-group" *ngIf="selectedChapter()">
+      <label class="form-label">3. Configuration du quiz</label>
+
+      <div class="config-row">
+        <div class="config-item">
+          <label class="config-label">Nombre de questions</label>
+          <select class="config-select" [(ngModel)]="nombreQuestions">
+            <option [ngValue]="5">5 questions</option>
+            <option [ngValue]="10">10 questions</option>
+            <option [ngValue]="15">15 questions</option>
+            <option [ngValue]="20">20 questions</option>
+          </select>
+        </div>
+
+        <div class="config-item">
+          <label class="config-label">Méthode de génération</label>
+          <div class="method-toggle">
+            <button
+              class="method-btn active"
+              [class.active]="methode() === 'groq'"
+              (click)="setMethode('groq')">
+              ✨ Générer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="alert alert-success" *ngIf="successMessage() as msg">
+      ✅ {{ msg }}
+    </div>
+    <div class="alert alert-error" *ngIf="errorMessage() as err">
+      ⚠️ {{ err }}
+    </div>
+
+    <!-- Bouton de génération -->
+    <button
+      class="btn-generate"
+      [disabled]="!selectedChapter() || generating()"
+      (click)="generateQuiz()">
+      <span *ngIf="!generating()">Générer le quiz</span>
+      <span *ngIf="generating()" class="generating">
+        <span class="spinner-small"></span>
+        Génération en cours...
+      </span>
+    </button>
+  </div>
+</div>

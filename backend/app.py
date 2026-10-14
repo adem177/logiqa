@@ -44,7 +44,7 @@ JWT_SECRET = os.getenv('JWT_SECRET')
 if not JWT_SECRET:
     raise ValueError("JWT_SECRET est obligatoire dans les variables d'environnement")
 
-SESSION_DURATION_DAYS = 2
+SESSION_DURATION_DAYS = 365  # Token valable 1 an
 EMAIL_ADDRESS = os.getenv('EMAIL_ADDRESS')
 EMAIL_APP_PASSWORD = os.getenv('EMAIL_APP_PASSWORD')
 
@@ -61,6 +61,10 @@ UPLOAD_VIDEOS_DIR = os.path.join(UPLOAD_ROOT, 'videos')
 UPLOAD_PDFS_DIR = os.path.join(UPLOAD_ROOT, 'pdfs')
 os.makedirs(UPLOAD_VIDEOS_DIR, exist_ok=True)
 os.makedirs(UPLOAD_PDFS_DIR, exist_ok=True)
+
+# Chemin vers les PDFs statiques du frontend (pour la génération de quiz)
+FRONTEND_PDFS_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'public', 'pdfs')
+FRONTEND_VIDEOS_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'public', 'videos')
 
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov', 'avi', 'mkv'}
 ALLOWED_PDF_EXTENSIONS = {'pdf'}
@@ -143,9 +147,10 @@ def send_reset_password_email(to_email, reset_link):
         msg['From'] = EMAIL_ADDRESS
         msg['To'] = to_email
 
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10) as server:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=5) as server:
             server.login(EMAIL_ADDRESS, EMAIL_APP_PASSWORD)
             server.send_message(msg)
+        logger.info(f"Email de réinitialisation envoyé à {to_email}")
         return True
     except Exception:
         logger.exception(f"Erreur envoi email de réinitialisation à {to_email}")
@@ -163,7 +168,7 @@ def create_token_response(user, cursor, conn):
     )
 
     token_hash = hash_token(token)
-    expires_naive = expires_at.replace(tzinfo=None)
+    expires_naive = expires_at.replace(tzinfo=None).replace(microsecond=0)
 
     cursor.execute(
         "INSERT INTO sessions (user_id, jti, token_hash, expires_at) VALUES (%s, %s, %s, %s)",
@@ -192,7 +197,7 @@ def register():
     password = data.get('password', '')
     telephone = data.get('telephone', '').strip()
     role_input = data.get('role', 'etudiant').strip()
-    role = role_input if role_input in ['etudiant', 'enseignant'] else 'etudiant'
+    role = role_input if role_input in ['etudiant', 'enseignant', 'admin'] else 'etudiant'
 
     if not all([nom, prenom, email, password]):
         return jsonify({"error": "Tous les champs obligatoires doivent être remplis."}), 400
@@ -266,7 +271,7 @@ def login():
             return jsonify({"error": "Trop de tentatives. Réessayez dans 5 minutes."}), 429
 
         cursor.execute(
-            "SELECT id, nom, prenom, email, password, role FROM users WHERE email = %s", (email,)
+            "SELECT id, nom, prenom, email, password, role, status FROM users WHERE email = %s", (email,)
         )
         user = cursor.fetchone()
 
@@ -274,7 +279,16 @@ def login():
             record_attempt_db(cursor, conn, rate_key)
             return jsonify({"error": "Email ou mot de passe incorrect."}), 401
 
+        if not user['status']:
+            return jsonify({"error": "Votre compte a été désactivé. Contactez l'administrateur."}), 403
+
         del user['password']
+
+        # Les administrateurs se connectent directement :
+        # aucun code OTP par e-mail, le token est délivré immédiatement.
+        if user['role'] == 'admin':
+            del user['status']
+            return jsonify(create_token_response(user, cursor, conn))
 
         cursor.execute(
             "SELECT code, expires_at FROM otp_codes WHERE user_id = %s", (user['id'],)
@@ -287,7 +301,7 @@ def login():
             })
 
         code = generate_otp()
-        expires = datetime.now(timezone.utc) + timedelta(minutes=5)
+        expires = datetime.now(timezone.utc) + timedelta(minutes=15)
 
         cursor.execute(
             """INSERT INTO otp_codes (user_id, code, expires_at, attempts)
@@ -516,10 +530,13 @@ def verify_otp():
         cursor.execute("DELETE FROM otp_codes WHERE user_id = %s", (user_id,))
         conn.commit()
 
-        cursor.execute("SELECT id, nom, prenom, email, role FROM users WHERE id = %s", (user_id,))
+        cursor.execute("SELECT id, nom, prenom, email, role, status FROM users WHERE id = %s", (user_id,))
         user = cursor.fetchone()
         if not user:
             return jsonify({"error": "Utilisateur introuvable."}), 404
+        if not user['status']:
+            return jsonify({"error": "Votre compte a été désactivé."}), 403
+        del user['status']
 
         response = create_token_response(user, cursor, conn)
         return jsonify(response)
@@ -567,6 +584,16 @@ def token_required(f):
             if isinstance(exp, datetime) and exp < datetime.now(timezone.utc):
                 return jsonify({"error": "Session expirée."}), 401
 
+            # Vérifier que le compte existe toujours et est actif,
+            # et recharger le rôle depuis la base (le JWT peut être périmé).
+            cursor.execute("SELECT id, status, role FROM users WHERE id = %s", (payload['id'],))
+            db_user = cursor.fetchone()
+            if not db_user:
+                return jsonify({"error": "Compte introuvable."}), 401
+            if not db_user['status']:
+                return jsonify({"error": "Compte désactivé."}), 403
+            payload['role'] = db_user['role']
+
         finally:
             conn.close()
 
@@ -576,11 +603,21 @@ def token_required(f):
 
 
 def enseignant_required(f):
-    """À utiliser APRÈS @token_required : vérifie que l'utilisateur a le rôle enseignant."""
+    """À utiliser APRÈS @token_required : vérifie que l'utilisateur a le rôle enseignant ou admin."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        if request.user.get('role') != 'enseignant':
+        if request.user.get('role') not in ('enseignant', 'admin'):
             return jsonify({"error": "Action réservée aux enseignants."}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
+def admin_required(f):
+    """À utiliser APRÈS @token_required : vérifie que l'utilisateur a le rôle admin."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.user.get('role') != 'admin':
+            return jsonify({"error": "Action réservée aux administrateurs."}), 403
         return f(*args, **kwargs)
     return decorated
 
@@ -616,7 +653,11 @@ def get_cours():
 
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, titre, description, categorie, niveau, enseignant_id FROM cours")
+        cursor.execute(
+            """SELECT c.id, c.titre, c.description, c.categorie, c.niveau, c.enseignant_id,
+                      (SELECT COUNT(*) FROM chapitres ch WHERE ch.cours_id = c.id) as nb_chapitres
+               FROM cours c"""
+        )
         cours_list = cursor.fetchall()
         return jsonify(cours_list)
     except Exception:
@@ -724,9 +765,6 @@ def update_cours(cours_id):
         if not existing:
             return jsonify({"error": "Cours introuvable."}), 404
 
-        if existing['enseignant_id'] != request.user['id']:
-            return jsonify({"error": "Action non autorisée."}), 403
-
         cursor.execute(
             "UPDATE cours SET titre = %s, description = %s, categorie = %s, niveau = %s WHERE id = %s",
             (titre, description, categorie, niveau, cours_id)
@@ -758,14 +796,36 @@ def delete_cours(cours_id):
         if not existing:
             return jsonify({"error": "Cours introuvable."}), 404
 
-        if existing['enseignant_id'] != request.user['id']:
-            return jsonify({"error": "Action non autorisée."}), 403
-
         cursor.execute("DELETE FROM cours WHERE id = %s", (cours_id,))
         conn.commit()
         return jsonify({"success": True, "message": "Cours supprimé."})
     except Exception:
         logger.exception("Erreur suppression cours")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/enseignant/cours', methods=['GET'])
+@token_required
+@enseignant_required
+def enseignant_mes_cours():
+    """Retourne tous les cours de la plateforme (visibles et gérables par l'enseignant)."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT c.id, c.titre, c.description, c.categorie, c.niveau, c.enseignant_id,
+                      (SELECT COUNT(*) FROM chapitres ch WHERE ch.cours_id = c.id) as nb_chapitres
+               FROM cours c
+               ORDER BY c.id DESC"""
+        )
+        cours_list = cursor.fetchall()
+        return jsonify(cours_list)
+    except Exception:
+        logger.exception("Erreur récupération cours enseignant")
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
         conn.close()
@@ -792,48 +852,56 @@ def upload_ressource(chapitre_id):
     if resource_type == 'pdf':
         if not allowed_extension(original_name, ALLOWED_PDF_EXTENSIONS):
             return jsonify({"error": "Le fichier doit être un PDF."}), 400
-        target_dir = UPLOAD_PDFS_DIR
         max_size = MAX_PDF_SIZE
         max_label = '20 Mo'
     else:
         if not allowed_extension(original_name, ALLOWED_VIDEO_EXTENSIONS):
             return jsonify({"error": "Le fichier doit être une vidéo."}), 400
-        target_dir = UPLOAD_VIDEOS_DIR
         max_size = MAX_VIDEO_SIZE
         max_label = '500 Mo'
 
-    # Vérification de la taille réelle du fichier reçu
-    file.seek(0, os.SEEK_END)
-    file_size = file.tell()
-    file.seek(0)
+    # Lire le contenu du fichier en binaire
+    file_content = file.read()
+    file_size = len(file_content)
+
     if file_size > max_size:
         return jsonify({"error": f"Le fichier dépasse la limite de {max_label}."}), 400
 
     ext = original_name.rsplit('.', 1)[1].lower()
     stored_name = f"{uuid.uuid4().hex}.{ext}"
-    file_path = os.path.join(target_dir, stored_name)
-
-    try:
-        file.save(file_path)
-    except Exception:
-        logger.exception("Erreur sauvegarde fichier")
-        return jsonify({"error": "Erreur lors de l'enregistrement du fichier."}), 500
 
     conn = get_connection()
     if not conn:
-        # Nettoyage du fichier orphelin si la BD est indisponible
-        if os.path.exists(file_path):
-            os.remove(file_path)
         return jsonify({"error": "Erreur connexion base de données"}), 500
 
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            """INSERT INTO chapitre_ressources
-               (chapitre_id, type, nom_original, nom_fichier, enseignant_id)
-               VALUES (%s, %s, %s, %s, %s)""",
-            (chapitre_id, resource_type, original_name, stored_name, request.user['id'])
-        )
+
+        if resource_type == 'pdf':
+            # PDF → stocker en BLOB dans la base
+            cursor.execute(
+                """INSERT INTO chapitre_ressources
+                   (chapitre_id, type, nom_original, contenu, taille, mime_type, enseignant_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (chapitre_id, resource_type, original_name, file_content,
+                 file_size, 'application/pdf', request.user['id'])
+            )
+            url = f"/api/ressources/{cursor.lastrowid}/download"
+        else:
+            # Vidéo → stocker sur disque
+            file_path = os.path.join(UPLOAD_VIDEOS_DIR, stored_name)
+            with open(file_path, 'wb') as f:
+                f.write(file_content)
+
+            cursor.execute(
+                """INSERT INTO chapitre_ressources
+                   (chapitre_id, type, nom_original, nom_fichier, taille, mime_type, enseignant_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (chapitre_id, resource_type, original_name, stored_name,
+                 file_size, file.content_type or 'video/mp4', request.user['id'])
+            )
+            url = f"/public/videos/{stored_name}"
+
         conn.commit()
         new_id = cursor.lastrowid
 
@@ -842,12 +910,15 @@ def upload_ressource(chapitre_id):
             "id": new_id,
             "type": resource_type,
             "nomOriginal": original_name,
-            "url": f"/public/{resource_type}s/{stored_name}"
+            "url": url
         })
     except Exception:
         logger.exception("Erreur insertion ressource")
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        # Nettoyage du fichier orphelin si la BD est indisponible
+        if resource_type == 'video':
+            file_path = os.path.join(UPLOAD_VIDEOS_DIR, stored_name)
+            if os.path.exists(file_path):
+                os.remove(file_path)
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
         conn.close()
@@ -925,15 +996,1022 @@ def delete_ressource(chapitre_id, resource_type, index):
         conn.close()
 
 
+@app.route('/api/ressources/<int:resource_id>/download', methods=['GET'])
+def download_ressource(resource_id):
+    """Télécharge un PDF stocké en BLOB dans la base."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT nom_original, contenu, mime_type, taille
+               FROM chapitre_ressources WHERE id = %s AND type = 'pdf'""",
+            (resource_id,)
+        )
+        resource = cursor.fetchone()
+
+        if not resource or not resource['contenu']:
+            return jsonify({"error": "Ressource introuvable."}), 404
+
+        from flask import Response
+        return Response(
+            resource['contenu'],
+            mimetype=resource['mime_type'] or 'application/pdf',
+            headers={
+                'Content-Disposition': f'attachment; filename="{resource["nom_original"]}"',
+                'Content-Length': resource['taille']
+            }
+        )
+    except Exception:
+        logger.exception("Erreur téléchargement ressource")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
 @app.route('/public/<string:resource_type>/<path:filename>', methods=['GET'])
 def serve_uploaded_file(resource_type, filename):
-    if resource_type == 'pdfs':
-        directory = UPLOAD_PDFS_DIR
-    elif resource_type == 'videos':
+    if resource_type == 'videos':
         directory = UPLOAD_VIDEOS_DIR
     else:
         return jsonify({"error": "Type de ressource invalide."}), 404
     return send_from_directory(directory, filename)
+
+
+# ===== QUIZ : GÉNÉRATION ET PASSAGE =====
+from quiz_generator import generate_quiz_from_chapter, GROQ_API_KEY, GROQ_MODEL
+
+@app.route('/api/test-groq', methods=['GET'])
+def test_groq():
+    """Teste la connexion à Groq."""
+    if not GROQ_API_KEY:
+        return jsonify({"error": "GROQ_API_KEY non définie"}), 400
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            api_key=GROQ_API_KEY,
+            base_url="https://api.groq.com/openai/v1"
+        )
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[{"role": "user", "content": "Dis bonjour en français"}],
+            max_tokens=50
+        )
+        return jsonify({
+            "success": True,
+            "message": response.choices[0].message.content,
+            "model": GROQ_MODEL
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/chapitres/<int:chapitre_id>/quiz/generer', methods=['POST'])
+@token_required
+@enseignant_required
+def generer_quiz(chapitre_id):
+    """Génère un quiz QCM à partir des PDF et vidéos d'un chapitre."""
+    data = request.get_json() or {}
+    nombre_questions = data.get('nombre_questions', 10)
+    methode = data.get('methode', 'auto')  # 'auto', 'openai' ou 'groq'
+
+    if methode not in ('auto', 'openai', 'groq'):
+        return jsonify({"error": "Méthode invalide. Utilisez 'auto', 'openai' ou 'groq'."}), 400
+
+    if not isinstance(nombre_questions, int) or nombre_questions < 1 or nombre_questions > 50:
+        return jsonify({"error": "Le nombre de questions doit être entre 1 et 50."}), 400
+
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+
+        # Vérifier que le chapitre existe
+        cursor.execute("SELECT id, titre FROM chapitres WHERE id = %s", (chapitre_id,))
+        chapitre = cursor.fetchone()
+        if not chapitre:
+            return jsonify({"error": "Chapitre introuvable."}), 404
+
+        # Récupérer les ressources du chapitre
+        cursor.execute(
+            "SELECT type, nom_fichier FROM chapitre_ressources WHERE chapitre_id = %s",
+            (chapitre_id,)
+        )
+        ressources = cursor.fetchall()
+
+        pdf_files = [os.path.join(UPLOAD_PDFS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'pdf']
+        video_files = [os.path.join(UPLOAD_VIDEOS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'video']
+
+        # Si aucune ressource en base, chercher les PDFs et vidéos statiques du frontend
+        if not pdf_files and not video_files:
+            # Mapping chapitre_id -> (course_slug, chapter_number)
+            CHAPTER_MAP = {
+                1: ('langage-c', 1), 2: ('langage-c', 2), 3: ('langage-c', 3),
+                4: ('langage-c', 4), 5: ('langage-c', 5), 6: ('langage-c', 6),
+                7: ('algebre', 1), 8: ('algebre', 2), 9: ('algebre', 3),
+                10: ('algebre', 4), 11: ('algebre', 5), 12: ('algebre', 6),
+                13: ('analyse', 1), 14: ('analyse', 2), 15: ('analyse', 3),
+                16: ('analyse', 4), 17: ('analyse', 5), 18: ('analyse', 6),
+                19: ('systemes-logiques', 1), 20: ('systemes-logiques', 2),
+                21: ('systemes-logiques', 3), 22: ('systemes-logiques', 4),
+                23: ('systemes-logiques', 5), 24: ('systemes-logiques', 6),
+                25: ('algorithmes', 1), 26: ('algorithmes', 2), 27: ('algorithmes', 3),
+                28: ('algorithmes', 4), 29: ('algorithmes', 5), 30: ('algorithmes', 6),
+                31: ('base-de-donnees', 1), 32: ('base-de-donnees', 2), 33: ('base-de-donnees', 3),
+                34: ('base-de-donnees', 4), 35: ('base-de-donnees', 5), 36: ('base-de-donnees', 6),
+                37: ('reseaux', 1), 38: ('reseaux', 2), 39: ('reseaux', 3),
+                40: ('reseaux', 4), 41: ('reseaux', 5), 42: ('reseaux', 6),
+                43: ('systeme-exploitation', 1), 44: ('systeme-exploitation', 2),
+                45: ('systeme-exploitation', 3), 46: ('systeme-exploitation', 4),
+                47: ('systeme-exploitation', 5), 48: ('systeme-exploitation', 6),
+            }
+            if chapitre_id in CHAPTER_MAP:
+                course_slug, chap_num = CHAPTER_MAP[chapitre_id]
+                static_pdf_dir = os.path.join(FRONTEND_PDFS_DIR, course_slug, f'chapitre{chap_num}')
+                if os.path.exists(static_pdf_dir):
+                    pdf_files = [
+                        os.path.join(static_pdf_dir, f)
+                        for f in os.listdir(static_pdf_dir)
+                        if f.endswith('.pdf')
+                    ]
+                    logger.info(f"PDFs statiques trouvés: {len(pdf_files)} dans {static_pdf_dir}")
+                
+                # Chercher aussi les vidéos
+                static_video_dir = os.path.join(FRONTEND_VIDEOS_DIR, course_slug, f'chapitre{chap_num}')
+                if os.path.exists(static_video_dir):
+                    video_files = [
+                        os.path.join(static_video_dir, f)
+                        for f in os.listdir(static_video_dir)
+                        if f.endswith(('.mp4', '.webm', '.mov', '.avi', '.mkv'))
+                    ]
+                    logger.info(f"Vidéos statiques trouvées: {len(video_files)} dans {static_video_dir}")
+
+        # Générer les questions
+        questions = generate_quiz_from_chapter(
+            pdf_files, video_files, nombre_questions, methode,
+            chapter_title=chapitre['titre']
+        )
+
+        if not questions:
+            return jsonify({"error": "Impossible de générer des questions à partir des ressources."}), 400
+
+        if not questions:
+            return jsonify({"error": "Impossible de générer des questions à partir des ressources."}), 400
+
+        # Créer le quiz en base
+        cursor.execute(
+            """INSERT INTO quiz (chapitre_id, titre, description, nombre_questions, methode_generation, created_by)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (chapitre_id, f"Quiz - {chapitre['titre']}", f"Généré automatiquement ({methode})",
+             len(questions), methode, request.user['id'])
+        )
+        quiz_id = cursor.lastrowid
+
+        # Insérer les questions et options
+        for ordre, q in enumerate(questions, 1):
+            cursor.execute(
+                "INSERT INTO quiz_questions (quiz_id, texte, ordre) VALUES (%s, %s, %s)",
+                (quiz_id, q['texte'], ordre)
+            )
+            question_id = cursor.lastrowid
+
+            for opt in q['options']:
+                cursor.execute(
+                    "INSERT INTO quiz_options (question_id, texte, est_correcte) VALUES (%s, %s, %s)",
+                    (question_id, opt['texte'], opt['est_correcte'])
+                )
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "quiz_id": quiz_id,
+            "titre": f"Quiz - {chapitre['titre']}",
+            "nombre_questions": len(questions),
+            "methode": methode
+        })
+
+    except Exception:
+        logger.exception("Erreur génération quiz")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/chapitres/<int:chapitre_id>/quiz', methods=['GET'])
+@token_required
+def lister_quiz(chapitre_id):
+    """Liste les quiz d'un chapitre."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT q.id, q.titre, q.description, q.nombre_questions, q.methode_generation,
+                      q.created_at, u.nom as createur_nom, u.prenom as createur_prenom,
+                      u.role as createur_role
+               FROM quiz q
+               LEFT JOIN users u ON u.id = q.created_by
+               WHERE q.chapitre_id = %s ORDER BY q.created_at DESC""",
+            (chapitre_id,)
+        )
+        quiz_list = cursor.fetchall()
+        return jsonify(quiz_list)
+    except Exception:
+        logger.exception("Erreur liste quiz")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/quiz/<int:quiz_id>', methods=['GET'])
+@token_required
+def get_quiz(quiz_id):
+    """Récupère un quiz avec ses questions et options (sans révéler les bonnes réponses)."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, titre, description, nombre_questions, methode_generation FROM quiz WHERE id = %s",
+            (quiz_id,)
+        )
+        quiz = cursor.fetchone()
+        if not quiz:
+            return jsonify({"error": "Quiz introuvable."}), 404
+
+        cursor.execute(
+            "SELECT id, texte, ordre FROM quiz_questions WHERE quiz_id = %s ORDER BY ordre",
+            (quiz_id,)
+        )
+        questions = cursor.fetchall()
+
+        for q in questions:
+            cursor.execute(
+                "SELECT id, texte FROM quiz_options WHERE question_id = %s ORDER BY id",
+                (q['id'],)
+            )
+            q['options'] = cursor.fetchall()
+
+        quiz['questions'] = questions
+        return jsonify(quiz)
+    except Exception:
+        logger.exception("Erreur récupération quiz")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/quiz/<int:quiz_id>/regenerer', methods=['POST'])
+@token_required
+def regenerer_quiz(quiz_id):
+    """Régénère un nouveau quiz pour le même chapitre."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT chapitre_id, nombre_questions, methode_generation FROM quiz WHERE id = %s", (quiz_id,))
+        quiz = cursor.fetchone()
+        if not quiz:
+            return jsonify({"error": "Quiz introuvable."}), 404
+
+        chapitre_id = quiz['chapitre_id']
+        cursor.execute("SELECT id, titre FROM chapitres WHERE id = %s", (chapitre_id,))
+        chapitre = cursor.fetchone()
+        if not chapitre:
+            return jsonify({"error": "Chapitre introuvable."}), 404
+
+        # Récupérer les ressources
+        cursor.execute("SELECT type, nom_fichier FROM chapitre_ressources WHERE chapitre_id = %s", (chapitre_id,))
+        ressources = cursor.fetchall()
+        pdf_files = [os.path.join(UPLOAD_PDFS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'pdf']
+        video_files = [os.path.join(UPLOAD_VIDEOS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'video']
+
+        if not pdf_files and not video_files:
+            CHAPTER_MAP = {
+                1: ('langage-c', 1), 2: ('langage-c', 2), 3: ('langage-c', 3),
+                4: ('langage-c', 4), 5: ('langage-c', 5), 6: ('langage-c', 6),
+                7: ('algebre', 1), 8: ('algebre', 2), 9: ('algebre', 3),
+                10: ('algebre', 4), 11: ('algebre', 5), 12: ('algebre', 6),
+                13: ('analyse', 1), 14: ('analyse', 2), 15: ('analyse', 3),
+                16: ('analyse', 4), 17: ('analyse', 5), 18: ('analyse', 6),
+                19: ('systemes-logiques', 1), 20: ('systemes-logiques', 2),
+                21: ('systemes-logiques', 3), 22: ('systemes-logiques', 4),
+                23: ('systemes-logiques', 5), 24: ('systemes-logiques', 6),
+                25: ('algorithmes', 1), 26: ('algorithmes', 2), 27: ('algorithmes', 3),
+                28: ('algorithmes', 4), 29: ('algorithmes', 5), 30: ('algorithmes', 6),
+                31: ('base-de-donnees', 1), 32: ('base-de-donnees', 2), 33: ('base-de-donnees', 3),
+                34: ('base-de-donnees', 4), 35: ('base-de-donnees', 5), 36: ('base-de-donnees', 6),
+                37: ('reseaux', 1), 38: ('reseaux', 2), 39: ('reseaux', 3),
+                40: ('reseaux', 4), 41: ('reseaux', 5), 42: ('reseaux', 6),
+                43: ('systeme-exploitation', 1), 44: ('systeme-exploitation', 2),
+                45: ('systeme-exploitation', 3), 46: ('systeme-exploitation', 4),
+                47: ('systeme-exploitation', 5), 48: ('systeme-exploitation', 6),
+            }
+            if chapitre_id in CHAPTER_MAP:
+                course_slug, chap_num = CHAPTER_MAP[chapitre_id]
+                static_pdf_dir = os.path.join(FRONTEND_PDFS_DIR, course_slug, f'chapitre{chap_num}')
+                if os.path.exists(static_pdf_dir):
+                    pdf_files = [os.path.join(static_pdf_dir, f) for f in os.listdir(static_pdf_dir) if f.endswith('.pdf')]
+                static_video_dir = os.path.join(FRONTEND_VIDEOS_DIR, course_slug, f'chapitre{chap_num}')
+                if os.path.exists(static_video_dir):
+                    video_files = [os.path.join(static_video_dir, f) for f in os.listdir(static_video_dir) if f.endswith(('.mp4', '.webm', '.mov', '.avi', '.mkv'))]
+
+        # Générer les nouvelles questions
+        questions = generate_quiz_from_chapter(
+            pdf_files, video_files, quiz['nombre_questions'], quiz['methode_generation'],
+            chapter_title=chapitre['titre']
+        )
+
+        if not questions:
+            return jsonify({"error": "Impossible de générer un nouveau quiz."}), 400
+
+        # Créer le nouveau quiz
+        cursor.execute(
+            """INSERT INTO quiz (chapitre_id, titre, description, nombre_questions, methode_generation, created_by)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (chapitre_id, f"Quiz - {chapitre['titre']}", f"Nouveau quiz généré",
+             len(questions), quiz['methode_generation'], request.user['id'])
+        )
+        new_quiz_id = cursor.lastrowid
+
+        for ordre, q in enumerate(questions, 1):
+            cursor.execute(
+                "INSERT INTO quiz_questions (quiz_id, texte, ordre) VALUES (%s, %s, %s)",
+                (new_quiz_id, q['texte'], ordre)
+            )
+            question_id = cursor.lastrowid
+            for opt in q['options']:
+                cursor.execute(
+                    "INSERT INTO quiz_options (question_id, texte, est_correcte) VALUES (%s, %s, %s)",
+                    (question_id, opt['texte'], opt['est_correcte'])
+                )
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "new_quiz_id": new_quiz_id,
+            "message": "Nouveau quiz généré avec succès !"
+        })
+
+    except Exception:
+        logger.exception("Erreur régénération quiz")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/quiz/<int:quiz_id>/soumettre', methods=['POST'])
+@token_required
+def soumettre_quiz(quiz_id):
+    """Soumet les réponses d'un étudiant et calcule le score.
+    Régénère automatiquement le quiz si l'étudiant l'a fait 3+ fois."""
+    data = request.get_json() or {}
+    reponses = data.get('reponses', [])  # Liste de {question_id, option_id}
+
+    if not reponses:
+        return jsonify({"error": "Aucune réponse provided."}), 400
+
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+
+        # Vérifier que le quiz existe
+        cursor.execute("SELECT id, nombre_questions, chapitre_id, methode_generation, created_at FROM quiz WHERE id = %s", (quiz_id,))
+        quiz = cursor.fetchone()
+        if not quiz:
+            return jsonify({"error": "Quiz introuvable."}), 404
+
+        # Vérifier si le quiz doit être régénéré AVANT d'enregistrer la tentative
+        should_regenerate = False
+        reason = ""
+
+        # Condition 1 : Quiz de plus de 3 jours
+        if quiz['created_at']:
+            age_days = (datetime.now() - quiz['created_at']).days
+            if age_days > 3:
+                should_regenerate = True
+                reason = f"Quiz ancien ({age_days} jours)"
+
+        # Régénérer le quiz si nécessaire
+        if should_regenerate:
+            logger.info(f"Régénération du quiz {quiz_id}: {reason}")
+            
+            # Supprimer l'ancien quiz
+            cursor.execute("DELETE FROM quiz_answers WHERE attempt_id IN (SELECT id FROM quiz_attempts WHERE quiz_id = %s)", (quiz_id,))
+            cursor.execute("DELETE FROM quiz_attempts WHERE quiz_id = %s", (quiz_id,))
+            cursor.execute("DELETE FROM quiz_options WHERE question_id IN (SELECT id FROM quiz_questions WHERE quiz_id = %s)", (quiz_id,))
+            cursor.execute("DELETE FROM quiz_questions WHERE quiz_id = %s", (quiz_id,))
+            cursor.execute("DELETE FROM quiz WHERE id = %s", (quiz_id,))
+            conn.commit()
+            
+            # Message d'expiration
+            if "ancien" in reason:
+                return jsonify({"error": f"Le quiz a expiré car il a plus de 3 jours. Veuillez générer un nouveau quiz."}), 410
+
+            # Générer un nouveau quiz
+            chapitre_id = quiz['chapitre_id']
+            cursor.execute("SELECT id, titre FROM chapitres WHERE id = %s", (chapitre_id,))
+            chapitre = cursor.fetchone()
+            if not chapitre:
+                return jsonify({"error": "Chapitre introuvable."}), 404
+
+            # Récupérer les ressources
+            cursor.execute(
+                "SELECT type, nom_fichier FROM chapitre_ressources WHERE chapitre_id = %s",
+                (chapitre_id,)
+            )
+            ressources = cursor.fetchall()
+            pdf_files = [os.path.join(UPLOAD_PDFS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'pdf']
+            video_files = [os.path.join(UPLOAD_VIDEOS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'video']
+
+            # Chercher les PDFs et vidéos statiques du frontend
+            if not pdf_files and not video_files:
+                CHAPTER_MAP = {
+                    1: ('langage-c', 1), 2: ('langage-c', 2), 3: ('langage-c', 3),
+                    4: ('langage-c', 4), 5: ('langage-c', 5), 6: ('langage-c', 6),
+                    7: ('algebre', 1), 8: ('algebre', 2), 9: ('algebre', 3),
+                    10: ('algebre', 4), 11: ('algebre', 5), 12: ('algebre', 6),
+                    13: ('analyse', 1), 14: ('analyse', 2), 15: ('analyse', 3),
+                    16: ('analyse', 4), 17: ('analyse', 5), 18: ('analyse', 6),
+                    19: ('systemes-logiques', 1), 20: ('systemes-logiques', 2),
+                    21: ('systemes-logiques', 3), 22: ('systemes-logiques', 4),
+                    23: ('systemes-logiques', 5), 24: ('systemes-logiques', 6),
+                    25: ('algorithmes', 1), 26: ('algorithmes', 2), 27: ('algorithmes', 3),
+                    28: ('algorithmes', 4), 29: ('algorithmes', 5), 30: ('algorithmes', 6),
+                    31: ('base-de-donnees', 1), 32: ('base-de-donnees', 2), 33: ('base-de-donnees', 3),
+                    34: ('base-de-donnees', 4), 35: ('base-de-donnees', 5), 36: ('base-de-donnees', 6),
+                    37: ('reseaux', 1), 38: ('reseaux', 2), 39: ('reseaux', 3),
+                    40: ('reseaux', 4), 41: ('reseaux', 5), 42: ('reseaux', 6),
+                    43: ('systeme-exploitation', 1), 44: ('systeme-exploitation', 2),
+                    45: ('systeme-exploitation', 3), 46: ('systeme-exploitation', 4),
+                    47: ('systeme-exploitation', 5), 48: ('systeme-exploitation', 6),
+                }
+                if chapitre_id in CHAPTER_MAP:
+                    course_slug, chap_num = CHAPTER_MAP[chapitre_id]
+                    static_pdf_dir = os.path.join(FRONTEND_PDFS_DIR, course_slug, f'chapitre{chap_num}')
+                    if os.path.exists(static_pdf_dir):
+                        pdf_files = [os.path.join(static_pdf_dir, f) for f in os.listdir(static_pdf_dir) if f.endswith('.pdf')]
+                    static_video_dir = os.path.join(FRONTEND_VIDEOS_DIR, course_slug, f'chapitre{chap_num}')
+                    if os.path.exists(static_video_dir):
+                        video_files = [os.path.join(static_video_dir, f) for f in os.listdir(static_video_dir) if f.endswith(('.mp4', '.webm', '.mov', '.avi', '.mkv'))]
+
+            # Générer les nouvelles questions
+            questions = generate_quiz_from_chapter(
+                pdf_files, video_files, quiz['nombre_questions'], quiz['methode_generation'],
+                chapter_title=chapitre['titre']
+            )
+
+            if not questions:
+                return jsonify({"error": "Impossible de régénérer le quiz."}), 400
+
+            # Créer le nouveau quiz
+            cursor.execute(
+                """INSERT INTO quiz (chapitre_id, titre, description, nombre_questions, methode_generation, created_by)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (chapitre_id, f"Quiz - {chapitre['titre']}", f"Régénéré automatiquement",
+                 len(questions), quiz['methode_generation'], request.user['id'])
+            )
+            new_quiz_id = cursor.lastrowid
+
+            for ordre, q in enumerate(questions, 1):
+                cursor.execute(
+                    "INSERT INTO quiz_questions (quiz_id, texte, ordre) VALUES (%s, %s, %s)",
+                    (new_quiz_id, q['texte'], ordre)
+                )
+                question_id = cursor.lastrowid
+                for opt in q['options']:
+                    cursor.execute(
+                        "INSERT INTO quiz_options (question_id, texte, est_correcte) VALUES (%s, %s, %s)",
+                        (question_id, opt['texte'], opt['est_correcte'])
+                    )
+
+            conn.commit()
+            
+            # Mettre à jour le quiz_id pour utiliser le nouveau quiz
+            quiz_id = new_quiz_id
+            
+            # Récupérer les infos du nouveau quiz
+            cursor.execute("SELECT id, nombre_questions FROM quiz WHERE id = %s", (quiz_id,))
+            quiz = cursor.fetchone()
+
+        # Récupérer les bonnes réponses
+        cursor.execute(
+            """SELECT q.id as question_id, o.id as option_id
+               FROM quiz_questions q
+               JOIN quiz_options o ON o.question_id = q.id
+               WHERE q.quiz_id = %s AND o.est_correcte = TRUE""",
+            (quiz_id,)
+        )
+        bonnes_reponses = {row['question_id']: row['option_id'] for row in cursor.fetchall()}
+
+        # Calculer le score
+        score = 0
+        for rep in reponses:
+            q_id = rep.get('question_id')
+            o_id = rep.get('option_id')
+            if q_id in bonnes_reponses and bonnes_reponses[q_id] == o_id:
+                score += 1
+
+        total = quiz['nombre_questions']
+
+        # Enregistrer la tentative
+        cursor.execute(
+            """INSERT INTO quiz_attempts (quiz_id, user_id, score, total_questions)
+               VALUES (%s, %s, %s, %s)""",
+            (quiz_id, request.user['id'], score, total)
+        )
+        attempt_id = cursor.lastrowid
+
+        # Enregistrer les réponses
+        for rep in reponses:
+            cursor.execute(
+                """INSERT INTO quiz_answers (attempt_id, question_id, option_id)
+                   VALUES (%s, %s, %s)""",
+                (attempt_id, rep.get('question_id'), rep.get('option_id'))
+            )
+
+        conn.commit()
+
+        # Récupérer les détails de la correction
+        cursor.execute(
+            """SELECT q.id as question_id, q.texte as question_texte,
+                      o.id as option_id, o.texte as option_texte, o.est_correcte
+               FROM quiz_questions q
+               JOIN quiz_options o ON o.question_id = q.id
+               WHERE q.quiz_id = %s
+               ORDER BY q.ordre, o.id""",
+            (quiz_id,)
+        )
+        all_options = cursor.fetchall()
+
+        # Construire la correction détaillée
+        correction = {}
+        for row in all_options:
+            q_id = row['question_id']
+            if q_id not in correction:
+                correction[q_id] = {
+                    'question_texte': row['question_texte'],
+                    'options': [],
+                    'reponse_correcte': None,
+                    'reponse_etudiant': None
+                }
+            correction[q_id]['options'].append({
+                'option_id': row['option_id'],
+                'option_texte': row['option_texte'],
+                'est_correcte': bool(row['est_correcte'])
+            })
+            if row['est_correcte']:
+                correction[q_id]['reponse_correcte'] = row['option_texte']
+
+        # Ajouter la réponse de l'étudiant
+        for rep in reponses:
+            q_id = rep.get('question_id')
+            o_id = rep.get('option_id')
+            if q_id in correction:
+                correction[q_id]['reponse_etudiant'] = o_id
+
+        return jsonify({
+            "success": True,
+            "score": score,
+            "total": total,
+            "pourcentage": round((score / total) * 100, 1) if total > 0 else 0,
+            "correction": correction
+        })
+
+    except Exception:
+        logger.exception("Erreur soumission quiz")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/quiz/<int:quiz_id>/resultat', methods=['GET'])
+@token_required
+def resultat_quiz(quiz_id):
+    """Récupère le dernier résultat d'un étudiant pour un quiz."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT id, score, total_questions, completed_at
+               FROM quiz_attempts
+               WHERE quiz_id = %s AND user_id = %s
+               ORDER BY completed_at DESC LIMIT 1""",
+            (quiz_id, request.user['id'])
+        )
+        resultat = cursor.fetchone()
+        if not resultat:
+            return jsonify({"error": "Aucune tentative trouvée."}), 404
+
+        return jsonify({
+            "score": resultat['score'],
+            "total": resultat['total_questions'],
+            "pourcentage": round((resultat['score'] / resultat['total_questions']) * 100, 1)
+            if resultat['total_questions'] > 0 else 0,
+            "completed_at": resultat['completed_at'].isoformat() if resultat['completed_at'] else None
+        })
+    except Exception:
+        logger.exception("Erreur résultat quiz")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+# ===== ADMIN — STATISTIQUES =====
+@app.route('/api/admin/stats', methods=['GET'])
+@token_required
+@admin_required
+def admin_stats():
+    """Retourne les statistiques globales pour le tableau de bord admin."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        stats = {}
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM users")
+        stats['total_users'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE role = 'etudiant'")
+        stats['total_etudiants'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE role = 'enseignant'")
+        stats['total_enseignants'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM users WHERE role = 'admin'")
+        stats['total_admins'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM cours")
+        stats['total_cours'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM chapitres")
+        stats['total_chapitres'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM chapitre_ressources")
+        stats['total_ressources'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM quiz")
+        stats['total_quiz'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM quiz_attempts")
+        stats['total_attempts'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COALESCE(AVG(score * 100.0 / NULLIF(total_questions, 0)), 0) as avg FROM quiz_attempts")
+        stats['avg_score'] = round(cursor.fetchone()['avg'], 1)
+
+        return jsonify(stats)
+    except Exception:
+        logger.exception("Erreur stats admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+# ===== ADMIN — UTILISATEURS =====
+@app.route('/api/admin/users', methods=['GET'])
+@token_required
+@admin_required
+def admin_list_users():
+    """Liste tous les utilisateurs."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT id, nom, prenom, email, telephone, role, status, created_at, last_login_at
+               FROM users ORDER BY created_at DESC"""
+        )
+        users = cursor.fetchall()
+        return jsonify({"users": users})
+    except Exception:
+        logger.exception("Erreur liste users admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/users/<int:user_id>/status', methods=['PUT'])
+@token_required
+@admin_required
+def admin_toggle_user_status(user_id):
+    """Active ou désactive un compte utilisateur."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, role, status FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({"error": "Utilisateur introuvable."}), 404
+        if user['id'] == request.user['id']:
+            return jsonify({"error": "Vous ne pouvez pas désactiver votre propre compte."}), 400
+
+        new_status = 0 if user['status'] else 1
+        cursor.execute("UPDATE users SET status = %s WHERE id = %s", (new_status, user_id))
+        conn.commit()
+        return jsonify({"success": True, "status": new_status})
+    except Exception:
+        logger.exception("Erreur toggle status admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/users/<int:user_id>/role', methods=['PUT'])
+@token_required
+@admin_required
+def admin_change_user_role(user_id):
+    """Change le rôle d'un utilisateur."""
+    data = request.get_json() or {}
+    new_role = data.get('role', '')
+    if new_role not in ('etudiant', 'enseignant', 'admin'):
+        return jsonify({"error": "Rôle invalide."}), 400
+
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Utilisateur introuvable."}), 404
+
+        cursor.execute("UPDATE users SET role = %s WHERE id = %s", (new_role, user_id))
+        conn.commit()
+        return jsonify({"success": True, "role": new_role})
+    except Exception:
+        logger.exception("Erreur change role admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
+@token_required
+@admin_required
+def admin_delete_user(user_id):
+    """Supprime un utilisateur."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Utilisateur introuvable."}), 404
+        if user_id == request.user['id']:
+            return jsonify({"error": "Vous ne pouvez pas supprimer votre propre compte."}), 400
+
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+        return jsonify({"success": True})
+    except Exception:
+        logger.exception("Erreur delete user admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+# ===== ADMIN — QUIZ =====
+@app.route('/api/admin/quiz', methods=['GET'])
+@token_required
+@admin_required
+def admin_list_quiz():
+    """Liste tous les quiz avec leur chapitre et créateur."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT q.id, q.titre, q.description, q.nombre_questions, q.methode_generation,
+                      q.created_at, c.titre as chapitre_titre, co.titre as cours_titre,
+                      u.nom as createur_nom, u.prenom as createur_prenom,
+                      (SELECT COUNT(*) FROM quiz_attempts qa WHERE qa.quiz_id = q.id) as nb_attempts
+               FROM quiz q
+               JOIN chapitres c ON c.id = q.chapitre_id
+               JOIN cours co ON co.id = c.cours_id
+               LEFT JOIN users u ON u.id = q.created_by
+               ORDER BY q.created_at DESC"""
+        )
+        quiz_list = cursor.fetchall()
+        return jsonify({"quiz": quiz_list})
+    except Exception:
+        logger.exception("Erreur liste quiz admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/quiz/<int:quiz_id>', methods=['DELETE'])
+@token_required
+@admin_required
+def admin_delete_quiz(quiz_id):
+    """Supprime un quiz et toutes ses données."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM quiz WHERE id = %s", (quiz_id,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Quiz introuvable."}), 404
+
+        cursor.execute("DELETE FROM quiz_answers WHERE attempt_id IN (SELECT id FROM quiz_attempts WHERE quiz_id = %s)", (quiz_id,))
+        cursor.execute("DELETE FROM quiz_attempts WHERE quiz_id = %s", (quiz_id,))
+        cursor.execute("DELETE FROM quiz_options WHERE question_id IN (SELECT id FROM quiz_questions WHERE quiz_id = %s)", (quiz_id,))
+        cursor.execute("DELETE FROM quiz_questions WHERE quiz_id = %s", (quiz_id,))
+        cursor.execute("DELETE FROM quiz WHERE id = %s", (quiz_id,))
+        conn.commit()
+        return jsonify({"success": True})
+    except Exception:
+        logger.exception("Erreur delete quiz admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+# ===== ADMIN — RESSOURCES =====
+@app.route('/api/admin/ressources', methods=['GET'])
+@token_required
+@admin_required
+def admin_list_ressources():
+    """Liste toutes les ressources (PDF/vidéos) avec leur chapitre et cours."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT r.id, r.type, r.nom_original, r.taille, r.mime_type, r.created_at,
+                      c.id as chapitre_id, c.titre as chapitre_titre,
+                      co.titre as cours_titre,
+                      u.nom as enseignant_nom, u.prenom as enseignant_prenom
+               FROM chapitre_ressources r
+               JOIN chapitres c ON c.id = r.chapitre_id
+               JOIN cours co ON co.id = c.cours_id
+               LEFT JOIN users u ON u.id = r.enseignant_id
+               ORDER BY r.created_at DESC"""
+        )
+        ressources = cursor.fetchall()
+        return jsonify({"ressources": ressources})
+    except Exception:
+        logger.exception("Erreur liste ressources admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/ressources/<int:resource_id>', methods=['DELETE'])
+@token_required
+@admin_required
+def admin_delete_ressource(resource_id):
+    """Supprime une ressource (PDF ou vidéo)."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, type, nom_fichier FROM chapitre_ressources WHERE id = %s", (resource_id,))
+        ressource = cursor.fetchone()
+        if not ressource:
+            return jsonify({"error": "Ressource introuvable."}), 404
+
+        if ressource['type'] == 'video' and ressource['nom_fichier']:
+            video_path = os.path.join(UPLOAD_VIDEOS_DIR, ressource['nom_fichier'])
+            if os.path.exists(video_path):
+                os.remove(video_path)
+
+        cursor.execute("DELETE FROM chapitre_ressources WHERE id = %s", (resource_id,))
+        conn.commit()
+        return jsonify({"success": True})
+    except Exception:
+        logger.exception("Erreur delete ressource admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+# ===== ADMIN — MATIÈRES =====
+@app.route('/api/admin/cours', methods=['GET'])
+@token_required
+@admin_required
+def admin_list_cours():
+    """Liste toutes les matières avec le nombre de chapitres."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT c.id, c.titre, c.description, c.categorie, c.niveau, c.created_at,
+                      c.enseignant_id,
+                      u.nom as enseignant_nom, u.prenom as enseignant_prenom,
+                      (SELECT COUNT(*) FROM chapitres ch WHERE ch.cours_id = c.id) as nb_chapitres
+               FROM cours c
+               LEFT JOIN users u ON u.id = c.enseignant_id
+               ORDER BY c.created_at DESC"""
+        )
+        cours_list = cursor.fetchall()
+        return jsonify({"cours": cours_list})
+    except Exception:
+        logger.exception("Erreur liste cours admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/cours', methods=['POST'])
+@token_required
+@admin_required
+def admin_create_cours():
+    """Crée une nouvelle matière."""
+    data = request.get_json() or {}
+    titre = data.get('titre', '').strip()
+    description = data.get('description', '').strip()
+    categorie = data.get('categorie', '').strip()
+    niveau = data.get('niveau', 'Débutant').strip()
+
+    if not titre or not description:
+        return jsonify({"error": "Le titre et la description sont obligatoires."}), 400
+
+    if not is_valid_field_length(titre) or not is_valid_field_length(description, MAX_DESCRIPTION_LENGTH):
+        return jsonify({"error": "Le titre ou la description dépasse la longueur autorisée."}), 400
+
+    if niveau not in NIVEAUX_VALIDES:
+        return jsonify({"error": f"Niveau invalide. Valeurs acceptées : {', '.join(NIVEAUX_VALIDES)}."}), 400
+
+    if contains_suspicious_html(titre) or contains_suspicious_html(description):
+        return jsonify({"error": "Caractères non autorisés détectés."}), 400
+
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO cours (titre, description, categorie, niveau, enseignant_id) VALUES (%s, %s, %s, %s, %s)",
+            (titre, description, categorie, niveau, request.user['id'])
+        )
+        conn.commit()
+        new_id = cursor.lastrowid
+
+        return jsonify({
+            "success": True,
+            "id": new_id, "titre": titre, "description": description,
+            "categorie": categorie, "niveau": niveau
+        }), 201
+    except Exception:
+        logger.exception("Erreur création cours admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/cours/<int:cours_id>', methods=['DELETE'])
+@token_required
+@admin_required
+def admin_delete_cours(cours_id):
+    """Supprime une matière et tout son contenu."""
+    conn = get_connection()
+    if not conn:
+        return jsonify({"error": "Erreur connexion base de données"}), 500
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM cours WHERE id = %s", (cours_id,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Cours introuvable."}), 404
+
+        cursor.execute("DELETE FROM cours WHERE id = %s", (cours_id,))
+        conn.commit()
+        return jsonify({"success": True, "message": "Matière supprimée."})
+    except Exception:
+        logger.exception("Erreur suppression cours admin")
+        return jsonify({"error": "Erreur serveur."}), 500
+    finally:
+        conn.close()
 
 
 # ===== PURGE PÉRIODIQUE =====

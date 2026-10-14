@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -8,16 +8,16 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
   selector: 'app-reset-password',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  templateUrl: './reset-password.html',
-  styleUrls: ['./reset-password.css']
+  templateUrl: './reset-password.html'
 })
 export class ResetPasswordComponent implements OnInit {
   resetForm: FormGroup;
   token: string = '';
   userId: string = '';
-  message: string = '';
-  errorMessage: string = '';
-  loading: boolean = false;
+  // Signaux : garantissent le rendu après un subscribe (mode zoneless)
+  message = signal('');
+  errorMessage = signal('');
+  loading = signal(false);
 
   constructor(
     private fb: FormBuilder,
@@ -40,9 +40,9 @@ export class ResetPasswordComponent implements OnInit {
   onSubmit() {
     if (this.resetForm.invalid || !this.token || !this.userId) return;
 
-    this.loading = true;
-    this.message = '';
-    this.errorMessage = '';
+    this.loading.set(true);
+    this.message.set('');
+    this.errorMessage.set('');
 
     const payload = {
       user_id: this.userId,
@@ -53,13 +53,13 @@ export class ResetPasswordComponent implements OnInit {
     this.http.post('http://localhost:3000/api/reset-password', payload)
       .subscribe({
         next: (res: any) => {
-          this.message = res.message;
-          this.loading = false;
+          this.message.set(res.message);
+          this.loading.set(false);
           setTimeout(() => this.router.navigate(['/login']), 2000);
         },
         error: (err) => {
-          this.errorMessage = err.error?.error || 'Une erreur est survenue.';
-          this.loading = false;
+          this.errorMessage.set(err.error?.error || 'Une erreur est survenue.');
+          this.loading.set(false);
         }
       });
   }

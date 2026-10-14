@@ -1,16 +1,67 @@
-<section class="hero">
-  <div class="hero-content">
-    <div class="text-content">
-      <h1>{{ slides[currentSlide].title }}</h1>
-      <h2>{{ slides[currentSlide].subtitle }}</h2>
-      <h3>{{ slides[currentSlide].description }}</h3>
-      <p>{{ slides[currentSlide].detail }}</p>
-      <button class="btn-start" routerLink="/inscription">start now</button>
-    </div>
+<section class="ui-page relative overflow-hidden">
+  <!-- Ambiance : halos lavande/indigo -->
+  <span class="pointer-events-none absolute -top-28 right-[-8%] h-80 w-80 rounded-full bg-[#6366f1]/12 blur-3xl" aria-hidden="true"></span>
+  <span class="pointer-events-none absolute bottom-[-18%] left-[-10%] h-96 w-96 rounded-full bg-[#a5b4fc]/25 blur-3xl" aria-hidden="true"></span>
 
-    <div class="image-content">
-      <img src="ima.jpg" alt="Logiqa" class="hero-logo" />
-      <div class="bg-shape"></div>
+  <div class="relative mx-auto w-full max-w-[1180px] px-5 pb-16 pt-24">
+    <div class="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+
+      <!-- ===== Bloc texte ===== -->
+      <div class="text-content">
+        <span class="badge inline-flex items-center gap-2 rounded-full border border-[#e4e6f8] bg-white px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6366f1] shadow-[0_2px_10px_-4px_rgba(16,24,40,0.12)]">
+          <span class="h-1.5 w-1.5 rounded-full bg-[#6366f1]"></span>
+          {{ slides[currentSlide].badge }}
+        </span>
+
+        <h1 class="brand-title mt-5 text-[44px] font-extrabold leading-[1.03] tracking-tight text-[#101828] sm:text-[54px]">
+          {{ slides[currentSlide].title }}
+        </h1>
+
+        <div class="headline-block mt-3">
+          <h2 class="max-w-xl text-[17px] font-medium leading-relaxed text-[#667085]">
+            {{ slides[currentSlide].subtitle }}
+          </h2>
+          <span class="headline-accent mt-3 block h-1.5 w-16 rounded-full bg-gradient-to-r from-[#6366f1] to-[#a5b4fc]" aria-hidden="true"></span>
+        </div>
+
+        <p class="sub-headline mt-4 text-[15px] font-semibold text-[#344054]">
+          {{ slides[currentSlide].description }}
+        </p>
+
+        <!-- Encadré mise en avant -->
+        <div class="paragraph-card ui-card mt-6 flex max-w-xl gap-3.5 p-4">
+          <svg class="quote-icon mt-0.5 h-5 w-5 flex-none text-[#6366f1]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 18h4l3-6V6H4a1 1 0 0 0-1 1v8a3 3 0 0 0 3 3z" />
+            <path d="M14 18h4l3-6V6h-6a1 1 0 0 0-1 1v8a3 3 0 0 0 3 3z" />
+          </svg>
+          <p class="text-[13.5px] leading-relaxed text-[#667085]">{{ slides[currentSlide].detail }}</p>
+        </div>
+
+        <div class="hero-actions mt-7 flex flex-wrap items-center gap-3">
+          <a class="ui-btn" routerLink="/inscription">
+            Commencer maintenant
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </a>
+          <a class="ui-btn ui-btn--ghost" routerLink="/login">Se connecter</a>
+        </div>
+      </div>
+
+      <!-- ===== Bloc image ===== -->
+      <div class="image-content relative">
+        <div class="bg-shape pointer-events-none absolute -right-6 -top-6 h-40 w-40 rounded-[36px] bg-[#6366f1]/10" aria-hidden="true"></div>
+        <div class="photo-frame ui-card ui-float group relative overflow-hidden rounded-[26px] p-2.5 shadow-[0_30px_60px_-25px_rgba(99,102,241,0.4)] transition-shadow duration-300 hover:shadow-[0_40px_80px_-25px_rgba(99,102,241,0.55)]">
+          <div class="h-[420px] w-full overflow-hidden rounded-[18px]">
+            <img src="ima.jpg" alt="Étudiant souriant tenant ses cahiers"
+                 class="hero-photo h-full w-full object-cover object-[center_15%] saturate-[1.06] contrast-[1.04] transition-transform duration-500 ease-out group-hover:scale-[1.06]" />
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>

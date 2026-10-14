@@ -1,1 +1,1039 @@
-/* You can add global styles to this file, and also import other style files */
+/* =========================================================
+   LOGIQA — Feuille de style globale
+   ---------------------------------------------------------
+   Ordre des couches (de la moins à la plus prioritaire) :
+   1. bootstrap  : reboot Bootstrap (reset de base du site)
+   2. theme      : tokens de couleurs/espacements Tailwind v4
+   3. globals    : typographie et couleurs globales du site
+   4. components : composants partagés (forms d'authentification…)
+   5. utilities  : utilitaires Tailwind (tout gagne à la fin)
+   → les utilitaires Tailwind l'emportent toujours, tout en
+     conservant l'apparence actuelle des pages existantes.
+   ========================================================= */
+@layer bootstrap, theme, base, globals, components, utilities;
+
+@import "tailwindcss";
+@import "bootstrap-icons/font/bootstrap-icons.css";
+@import "bootstrap/dist/css/bootstrap.min.css" layer(bootstrap);
+
+@layer globals {
+  /* ===== Typographie globale ===== */
+  :root {
+    --app-font: 'Inter', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    --app-primary: #0b4b7d;
+    --app-primary-deep: #07375f;
+    --app-teal: #17b0a6;
+    --app-light: #2aabd6;
+
+    /* Palette des pages d'authentification (login / inscription) */
+    --auth-navy: #141b2d;
+    --auth-indigo: #6366f1;
+    --auth-indigo-deep: #4f46e5;
+    --auth-panel: #f4f5f7;
+    --auth-ink: #1a1a2e;
+    --auth-line: #e3e6ec;
+
+    /* ===== Design system « UI » (tout le site) ===== */
+    --ui-bg: #f3f3fb; /* fond lavande des pages */
+    --ui-surface: #ffffff;
+    --ui-ink: #101828;
+    --ui-ink-soft: #344054;
+    --ui-muted: #667085;
+    --ui-line: #edeff5;
+    --ui-primary: #6366f1;
+    --ui-primary-deep: #4f46e5;
+    --ui-mint: #d6f8e3;
+    --ui-mint-ink: #12b76a;
+    --ui-rose: #ffe3e0;
+    --ui-rose-ink: #f04438;
+    --ui-amber: #fff3d6;
+    --ui-amber-ink: #f79009;
+    --ui-shadow: 0 12px 30px -14px rgba(16, 24, 40, 0.14);
+    --ui-shadow-lg: 0 26px 60px -26px rgba(16, 24, 40, 0.25);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  html,
+  body {
+    font-family: var(--app-font);
+  }
+
+  body {
+    margin: 0;
+    color: #1e293b;
+    background-color: var(--ui-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--app-font);
+    font-weight: 700;
+    color: var(--app-primary-deep);
+    margin: 0 0 0.5rem;
+    line-height: 1.2;
+  }
+
+  h1 { font-size: 2.5rem; }
+  h2 { font-size: 2rem; }
+  h3 { font-size: 1.75rem; }
+  h4 { font-size: 1.5rem; }
+  h5 { font-size: 1.25rem; }
+  h6 { font-size: 1rem; }
+
+  p {
+    margin: 0 0 1rem;
+    line-height: 1.7;
+  }
+
+  ul,
+  ol {
+    margin: 0 0 1rem;
+    padding-left: 2rem;
+  }
+
+  ul {
+    list-style: disc;
+  }
+
+  ol {
+    list-style: decimal;
+  }
+
+  a {
+    color: #0d6efd;
+    text-decoration: underline;
+  }
+
+  /* Le Preflight Tailwind passe ces éléments en block :
+     on restaure le comportement historique du site. */
+  img,
+  svg,
+  video,
+  canvas,
+  audio,
+  iframe,
+  embed,
+  object {
+    display: revert;
+  }
+
+  ::selection {
+    background: rgba(42, 171, 214, 0.28);
+  }
+}
+
+/* =========================================================
+   COMPOSANTS PARTAGÉS — formulaires d'authentification
+   (login, inscription, et bientôt forgot/reset password)
+   ========================================================= */
+@layer components {
+  .auth-label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--auth-ink);
+  }
+
+  .auth-input {
+    width: 100%;
+    padding: 9px 13px;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 1.5;
+    color: var(--auth-ink);
+    background-color: #ffffff;
+    border: 1.5px solid var(--auth-line);
+    border-radius: 9px;
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease,
+      background-color 0.18s ease;
+  }
+
+  .auth-input::placeholder {
+    color: #9aa3b2;
+  }
+
+  .auth-input:hover {
+    border-color: #c9cfdb;
+  }
+
+  .auth-input:focus {
+    border-color: var(--auth-indigo);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  }
+
+  .auth-input:disabled {
+    background-color: #f1f3f7;
+    cursor: not-allowed;
+  }
+
+  .auth-input.is-invalid,
+  .auth-input.invalid {
+    border-color: #dc2626;
+    background-color: #fef2f2;
+  }
+
+  .auth-input.is-valid,
+  .auth-input.valid {
+    border-color: #16a34a;
+    background-color: #f0fdf4;
+  }
+
+  /* Sélecteur de rôle (étudiant / enseignant / admin) */
+  .role-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #4a5568;
+    background-color: #ffffff;
+    border: 1.5px solid var(--auth-line);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease,
+      color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .role-btn:hover {
+    border-color: var(--auth-indigo);
+    color: var(--auth-indigo-deep);
+  }
+
+  .role-btn.is-active {
+    color: var(--auth-indigo-deep);
+    background-color: rgba(99, 102, 241, 0.09);
+    border-color: var(--auth-indigo);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14);
+  }
+
+  /* Indicateur de force du mot de passe */
+  .pw-track {
+    height: 4px;
+    margin-top: 5px;
+    background-color: #e3e6ec;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .pw-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.35s ease, background-color 0.35s ease;
+  }
+
+  .pw-fill.weak {
+    background-color: #ef4444;
+  }
+
+  .pw-fill.medium {
+    background-color: #f59e0b;
+  }
+
+  .pw-fill.strong {
+    background-color: #22c55e;
+  }
+
+  .pw-req {
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pw-req li {
+    font-size: 11px;
+    line-height: 1.5;
+    color: #9aa3b2;
+  }
+
+  .pw-req li.met {
+    color: #16a34a;
+    font-weight: 600;
+  }
+
+  /* Encart conditions d'utilisation */
+  .terms-box {
+    padding: 9px 12px;
+    background-color: #ffffff;
+    border: 1px solid var(--auth-line);
+    border-radius: 9px;
+  }
+
+  /* Bouton principal indigo (register now / se connecter) */
+  .auth-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 11px 18px;
+    font-size: 13.5px;
+    font-weight: 700;
+    font-family: inherit;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #ffffff;
+    background-color: var(--auth-indigo);
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.75);
+    transition: transform 0.18s ease, box-shadow 0.18s ease,
+      background-color 0.18s ease;
+  }
+
+  .auth-btn:hover:not(:disabled) {
+    background-color: var(--auth-indigo-deep);
+    transform: translateY(-2px);
+    box-shadow: 0 18px 30px -12px rgba(79, 70, 229, 0.8);
+  }
+
+  .auth-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .auth-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* =========================================================
+     DESIGN SYSTEM « UI » — composants partagés par tout le site
+     (fond lavande, cartes blanches arrondies, accents indigo,
+      badges vert/rouge, tableaux épurés)
+     ========================================================= */
+  .ui-page {
+    min-height: calc(100vh - 56px);
+    background-color: var(--ui-bg);
+  }
+
+  .ui-card {
+    background-color: var(--ui-surface);
+    border: 1px solid var(--ui-line);
+    border-radius: 18px;
+    box-shadow: var(--ui-shadow);
+  }
+
+  .ui-title {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--ui-ink);
+  }
+
+  .ui-sub {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ui-muted);
+  }
+
+  /* ---- Animations ---- */
+  .ui-float {
+    animation: ui-float 6s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  /* ---- Boutons ---- */
+  .ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-size: 13.5px;
+    font-weight: 700;
+    font-family: inherit;
+    color: #ffffff;
+    background-color: var(--ui-primary);
+    border: 1.5px solid transparent;
+    border-radius: 11px;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 12px 24px -12px rgba(99, 102, 241, 0.75);
+    transition: transform 0.18s ease, box-shadow 0.18s ease,
+      background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  }
+
+  .ui-btn:hover:not(:disabled) {
+    background-color: var(--ui-primary-deep);
+    transform: translateY(-2px);
+    box-shadow: 0 18px 30px -14px rgba(79, 70, 229, 0.85);
+  }
+
+  .ui-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .ui-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* Bouton fantôme sur fond blanc (secondaire) */
+  .ui-btn--ghost {
+    color: var(--ui-ink);
+    background-color: var(--ui-surface);
+    border-color: var(--ui-line);
+    box-shadow: none;
+  }
+
+  .ui-btn--ghost:hover:not(:disabled) {
+    color: var(--ui-primary-deep);
+    background-color: #ffffff;
+    border-color: rgba(99, 102, 241, 0.45);
+    box-shadow: none;
+  }
+
+  /* Bouton indigo translucide (action secondaire colorée) */
+  .ui-btn--soft {
+    color: var(--ui-primary-deep);
+    background-color: rgba(99, 102, 241, 0.1);
+    box-shadow: none;
+  }
+
+  .ui-btn--soft:hover:not(:disabled) {
+    color: #ffffff;
+    background-color: var(--ui-primary);
+    box-shadow: 0 12px 24px -12px rgba(99, 102, 241, 0.75);
+  }
+
+  /* ---- Badges / pastilles d'état ---- */
+  .ui-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 11px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .ui-badge--ok {
+    color: var(--ui-mint-ink);
+    background-color: var(--ui-mint);
+  }
+
+  .ui-badge--off {
+    color: var(--ui-rose-ink);
+    background-color: var(--ui-rose);
+  }
+
+  .ui-badge--info {
+    color: var(--ui-primary-deep);
+    background-color: rgba(99, 102, 241, 0.12);
+  }
+
+  .ui-badge--warn {
+    color: var(--ui-amber-ink);
+    background-color: var(--ui-amber);
+  }
+
+  /* ---- Champs & recherche ---- */
+  .ui-input {
+    width: 100%;
+    padding: 9px 13px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ui-ink);
+    background-color: var(--ui-surface);
+    border: 1.5px solid var(--ui-line);
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .ui-input::placeholder {
+    color: #98a2b3;
+  }
+
+  .ui-input:focus {
+    border-color: var(--ui-primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14);
+  }
+
+  /* Champ de recherche arrondi, fond très clair */
+  .ui-search {
+    width: 100%;
+    padding: 8px 14px 8px 36px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--ui-ink);
+    background-color: #f7f8fc;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    outline: none;
+    transition: background-color 0.18s ease, border-color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .ui-search::placeholder {
+    color: #98a2b3;
+  }
+
+  .ui-search:focus {
+    background-color: #ffffff;
+    border-color: rgba(99, 102, 241, 0.45);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+  }
+
+  /* ---- Tableaux épurés ---- */
+  .ui-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .ui-table thead th {
+    padding: 10px 14px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--ui-muted);
+    border-bottom: 1px solid var(--ui-line);
+  }
+
+  .ui-table tbody td {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--ui-ink-soft);
+    border-bottom: 1px solid var(--ui-line);
+  }
+
+  .ui-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .ui-table tbody tr {
+    transition: background-color 0.15s ease;
+  }
+
+  .ui-table tbody tr:hover {
+    background-color: #fafaff;
+  }
+
+  /* ---- Pastille carrée pour icônes (statistiques) ---- */
+  .ui-icon-tile {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    color: var(--ui-primary);
+    background-color: rgba(99, 102, 241, 0.1);
+    border-radius: 12px;
+  }
+
+  /* =========================================================
+     COMPOSANTS DASHBOARD (tableaux de bord admin / enseignant)
+     ========================================================= */
+
+  /* Carte statistique */
+  .ui-stat {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background-color: var(--ui-surface);
+    border: 1px solid var(--ui-line);
+    border-radius: 18px;
+    box-shadow: var(--ui-shadow);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .ui-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ui-shadow-lg);
+  }
+
+  /* Ligne « sous-information » d'une carte statistique */
+  .ui-stat-sub {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: #98a2b3;
+  }
+
+  /* État atténué — lié au binding [class.muted] (même couche que .ui-stat-sub) */
+  .ui-stat .muted {
+    color: #b7bdc9;
+  }
+
+  /* Pastilles de stats colorées — liées au binding [ngClass]="stat.iconClass" */
+  .ui-icon-tile.icon-blue {
+    color: #2563eb;
+    background-color: rgba(59, 130, 246, 0.12);
+  }
+
+  .ui-icon-tile.icon-purple {
+    color: #7c3aed;
+    background-color: rgba(139, 92, 246, 0.12);
+  }
+
+  /* Élément du menu latéral (sidebar des dashboards) */
+  .ui-side-link {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    font-weight: 600;
+    font-family: inherit;
+    text-align: left;
+    text-decoration: none;
+    color: var(--ui-muted);
+    background-color: transparent;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: color 0.16s ease, background-color 0.16s ease;
+  }
+
+  .ui-side-link:hover {
+    color: var(--ui-primary-deep);
+    background-color: rgba(99, 102, 241, 0.07);
+  }
+
+  /* Onglet actif — lié au binding [class.active] */
+  .ui-side .active {
+    color: var(--ui-primary-deep);
+    background-color: rgba(99, 102, 241, 0.11);
+    font-weight: 700;
+  }
+
+  /* Rail icônes seul sur petit écran (libellés masqués en HTML) */
+  @media (max-width: 767.98px) {
+    .ui-side-link {
+      justify-content: center;
+      padding: 10px;
+    }
+  }
+
+  /* Bouton danger (confirmations de suppression) */
+  .ui-btn--danger {
+    color: #ffffff;
+    background-color: var(--ui-rose-ink);
+    box-shadow: 0 12px 24px -12px rgba(240, 68, 56, 0.7);
+  }
+
+  .ui-btn--danger:hover:not(:disabled) {
+    background-color: #d92d20;
+    box-shadow: 0 18px 30px -14px rgba(240, 68, 56, 0.85);
+  }
+
+  /* Bouton icône carré (actions dans les tableaux) */
+  .ui-icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    font-size: 15px;
+    color: var(--ui-muted);
+    background-color: var(--ui-surface);
+    border: 1px solid var(--ui-line);
+    border-radius: 10px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.16s ease, border-color 0.16s ease,
+      background-color 0.16s ease;
+  }
+
+  .ui-icon-btn:hover:not(:disabled) {
+    color: var(--ui-primary-deep);
+    border-color: rgba(99, 102, 241, 0.45);
+    background-color: rgba(99, 102, 241, 0.07);
+  }
+
+  .ui-icon-btn--danger {
+    color: var(--ui-rose-ink);
+    border-color: var(--ui-rose);
+    background-color: #fff8f7;
+  }
+
+  .ui-icon-btn--danger:hover:not(:disabled) {
+    color: #ffffff;
+    border-color: transparent;
+    background-color: var(--ui-rose-ink);
+  }
+
+  .ui-icon-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* États liés aux bindings de pages :
+     [class.active] / [class.inactive] → badge de statut utilisateur
+     [class.pdf] / [class.video]      → badge de type de fichier */
+  .ui-badge.active {
+    color: var(--ui-mint-ink);
+    background-color: var(--ui-mint);
+  }
+
+  .ui-badge.inactive {
+    color: var(--ui-rose-ink);
+    background-color: var(--ui-rose);
+  }
+
+  .ui-badge.pdf {
+    color: var(--ui-rose-ink);
+    background-color: var(--ui-rose);
+  }
+
+  .ui-badge.video {
+    color: var(--ui-amber-ink);
+    background-color: var(--ui-amber);
+  }
+
+  /* Notification toast — bindings [class.success] / [class.error] */
+  .ui-toast {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--ui-ink);
+    background-color: var(--ui-surface);
+    border: 1px solid var(--ui-line);
+    border-radius: 14px;
+    box-shadow: var(--ui-shadow-lg);
+    animation: toastIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .ui-toast.success {
+    color: var(--ui-mint-ink);
+    background-color: var(--ui-mint);
+    border-color: transparent;
+  }
+
+  .ui-toast.error {
+    color: var(--ui-rose-ink);
+    background-color: var(--ui-rose);
+    border-color: transparent;
+  }
+
+  @keyframes toastIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* Menu profil ouvert — binding [class.open] sur .profile-dd
+     (!important : les utilitaires Tailwind de survol l'emportent sinon) */
+  .profile-dd.open > button {
+    color: var(--ui-primary-deep) !important;
+    border-color: rgba(99, 102, 241, 0.45) !important;
+  }
+
+  /* =========================================================
+     COMPOSANTS CATALOGUE (page /cours)
+     ========================================================= */
+
+  /* Grande barre de recherche (hero du catalogue) */
+  .ui-searchbox {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 560px;
+    padding: 10px 12px 10px 18px;
+    background-color: var(--ui-surface);
+    border: 1.5px solid var(--ui-line);
+    border-radius: 999px;
+    box-shadow: var(--ui-shadow);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .ui-searchbox.focused {
+    border-color: var(--ui-primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14);
+  }
+
+  .ui-searchbox input {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ui-ink);
+    background-color: transparent;
+    border: none;
+    outline: none;
+  }
+
+  .ui-searchbox input::placeholder {
+    color: #98a2b3;
+  }
+
+  /* Pastilles de filtre (catégories) — binding [class.active] */
+  .ui-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 15px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    color: var(--ui-ink-soft);
+    background-color: var(--ui-surface);
+    border: 1px solid var(--ui-line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.16s ease, border-color 0.16s ease,
+      background-color 0.16s ease, box-shadow 0.16s ease;
+  }
+
+  .ui-chip:hover {
+    color: var(--ui-primary-deep);
+    border-color: rgba(99, 102, 241, 0.45);
+  }
+
+  .ui-chip.active {
+    color: #ffffff;
+    background-color: var(--ui-primary);
+    border-color: transparent;
+    box-shadow: 0 10px 20px -12px rgba(99, 102, 241, 0.9);
+  }
+
+  .ui-chip-count {
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ui-muted);
+    background-color: #f3f3fb;
+    border-radius: 999px;
+  }
+
+  .ui-chip.active .ui-chip-count {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.22);
+  }
+
+  /* Pagination — binding [class.active] sur .ui-pager */
+  .ui-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .ui-pager {
+    display: inline-grid;
+    place-items: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 6px;
+    font-size: 13.5px;
+    font-weight: 700;
+    font-family: inherit;
+    color: var(--ui-ink-soft);
+    background-color: var(--ui-surface);
+    border: 1px solid var(--ui-line);
+    border-radius: 12px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.16s ease, border-color 0.16s ease,
+      background-color 0.16s ease, box-shadow 0.16s ease;
+  }
+
+  .ui-pager:hover:not(.active):not(:disabled) {
+    color: var(--ui-primary-deep);
+    background-color: rgba(99, 102, 241, 0.06);
+    border-color: rgba(99, 102, 241, 0.45);
+  }
+
+  .ui-pager.active {
+    color: #ffffff;
+    background-color: var(--ui-primary);
+    border-color: transparent;
+    box-shadow: 0 10px 20px -12px rgba(99, 102, 241, 0.9);
+  }
+
+  .ui-pager:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* =========================================================
+     MENU DÉROULANT DE LA NAVBAR (bouton « Menu »)
+     ========================================================= */
+  .menu-pop {
+    transform-origin: top right;
+    animation: menuPop 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes menuPop {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 13.5px;
+    font-weight: 500;
+    font-family: inherit;
+    text-align: left;
+    text-decoration: none;
+    color: #1e293b;
+    background-color: transparent;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease,
+      transform 0.16s ease;
+  }
+
+  .menu-item > svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    color: var(--auth-indigo);
+    transition: color 0.16s ease;
+  }
+
+  .menu-item:hover {
+    background-color: rgba(99, 102, 241, 0.1);
+    color: var(--auth-indigo-deep);
+  }
+
+  .menu-item:active {
+    transform: translateY(1px);
+  }
+
+  .menu-item--danger {
+    color: #dc2626;
+    font-weight: 600;
+  }
+
+  .menu-item--danger > svg {
+    color: #dc2626;
+  }
+
+  .menu-item--danger:hover {
+    background-color: #fef2f2;
+    color: #b91c1c;
+  }
+
+  .menu-user-card {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 6px;
+    padding: 10px 12px;
+    background-color: rgba(99, 102, 241, 0.08);
+    background-image: linear-gradient(
+      135deg,
+      rgba(99, 102, 241, 0.14),
+      rgba(99, 102, 241, 0.05)
+    );
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    border-radius: 12px;
+  }
+
+  .menu-user-name {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: #0f172a;
+  }
+
+  .menu-user-role {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--auth-indigo);
+  }
+}
+
+/* ===== Barres de défilement ===== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f6fa;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b9cbdb;
+  border-radius: 999px;
+  border: 2px solid #f1f6fa;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--app-light);
+}
+
+/* ===== Accessibilité ===== */
+:focus-visible {
+  outline: 3px solid rgba(42, 171, 214, 0.55);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes ui-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}

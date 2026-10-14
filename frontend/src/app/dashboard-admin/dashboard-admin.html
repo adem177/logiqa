@@ -1,0 +1,394 @@
+<div class="ui-page">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="ui-side fixed bottom-0 left-0 top-14 z-30 flex w-[72px] flex-col border-r border-[var(--ui-line)] bg-white md:w-[240px]">
+    <!-- Logo -->
+    <div class="flex items-center gap-2.5 border-b border-[var(--ui-line)] px-4 py-3.5">
+      <img src="Logiqa.png" alt="LOGIQA" class="h-9 w-9 flex-none rounded-lg object-contain" />
+      <span class="hidden text-[15px] font-extrabold tracking-tight text-[#101828] md:inline">LOGIQA</span>
+      <span class="ml-auto hidden rounded-md bg-[var(--ui-amber)] px-2 py-0.5 text-[9.5px] font-bold tracking-[0.12em] text-[var(--ui-amber-ink)] md:inline">ADMIN</span>
+    </div>
+
+    <nav class="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+      <button class="ui-side-link" [class.active]="activeTab() === 'dashboard'" (click)="setTab('dashboard')">
+        <i class="bi bi-speedometer2 w-5 flex-none text-center text-[16px]" aria-hidden="true"></i>
+        <span class="hidden md:inline">Tableau de bord</span>
+      </button>
+      <button class="ui-side-link" [class.active]="activeTab() === 'utilisateurs'" (click)="setTab('utilisateurs')">
+        <i class="bi bi-people w-5 flex-none text-center text-[16px]" aria-hidden="true"></i>
+        <span class="hidden md:inline">Utilisateurs</span>
+      </button>
+      <button class="ui-side-link" [class.active]="activeTab() === 'matieres'" (click)="setTab('matieres')">
+        <i class="bi bi-journal-text w-5 flex-none text-center text-[16px]" aria-hidden="true"></i>
+        <span class="hidden md:inline">Matières</span>
+      </button>
+      <button class="ui-side-link" [class.active]="activeTab() === 'quiz'" (click)="setTab('quiz')">
+        <i class="bi bi-pencil-square w-5 flex-none text-center text-[16px]" aria-hidden="true"></i>
+        <span class="hidden md:inline">Quiz</span>
+      </button>
+      <button class="ui-side-link" [class.active]="activeTab() === 'ressources'" (click)="setTab('ressources')">
+        <i class="bi bi-folder w-5 flex-none text-center text-[16px]" aria-hidden="true"></i>
+        <span class="hidden md:inline">Ressources</span>
+      </button>
+
+      <div class="my-2 border-t border-[var(--ui-line)]"></div>
+
+      <a class="ui-side-link" routerLink="/generer-quiz">
+        <i class="bi bi-stars w-5 flex-none text-center text-[16px]" aria-hidden="true"></i>
+        <span class="hidden md:inline">Créer un quiz</span>
+      </a>
+      <a class="ui-side-link" routerLink="/enseignant/upload-cours">
+        <i class="bi bi-cloud-arrow-up w-5 flex-none text-center text-[16px]" aria-hidden="true"></i>
+        <span class="hidden md:inline">Uploader un cours</span>
+      </a>
+      <a class="ui-side-link" routerLink="/cours">
+        <i class="bi bi-book w-5 flex-none text-center text-[16px]" aria-hidden="true"></i>
+        <span class="hidden md:inline">Voir les cours</span>
+      </a>
+    </nav>
+
+    <!-- Profil -->
+    <div class="flex items-center gap-3 border-t border-[var(--ui-line)] px-4 py-3.5">
+      <span class="grid h-9 w-9 flex-none place-items-center rounded-full bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-[12px] font-bold text-white">{{ adminInitials }}</span>
+      <div class="hidden min-w-0 flex-col md:flex">
+        <span class="truncate text-[13px] font-bold text-[#101828]">{{ adminName }}</span>
+        <span class="text-[11px] font-semibold text-[#98a2b3]">Administrateur</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== CONTENU ===== -->
+  <main class="ml-[72px] px-4 pb-6 pt-20 md:ml-[240px] md:px-7">
+    <!-- Header -->
+    <header class="mb-5">
+      <h1 class="ui-title flex flex-wrap items-center gap-2.5 text-[20px]">
+        <span *ngIf="activeTab() === 'dashboard'" class="flex items-center gap-2.5"><i class="bi bi-speedometer2 text-[20px] text-[#6366f1]" aria-hidden="true"></i>Tableau de bord</span>
+        <span *ngIf="activeTab() === 'utilisateurs'" class="flex items-center gap-2.5"><i class="bi bi-people text-[20px] text-[#6366f1]" aria-hidden="true"></i>Gestion des utilisateurs</span>
+        <span *ngIf="activeTab() === 'matieres'" class="flex items-center gap-2.5"><i class="bi bi-journal-text text-[20px] text-[#6366f1]" aria-hidden="true"></i>Gestion des matières</span>
+        <span *ngIf="activeTab() === 'quiz'" class="flex items-center gap-2.5"><i class="bi bi-pencil-square text-[20px] text-[#6366f1]" aria-hidden="true"></i>Gestion des quiz</span>
+        <span *ngIf="activeTab() === 'ressources'" class="flex items-center gap-2.5"><i class="bi bi-folder text-[20px] text-[#6366f1]" aria-hidden="true"></i>Gestion des ressources</span>
+      </h1>
+    </header>
+
+    <!-- Toast -->
+    <div class="ui-toast" [class.success]="messageType() === 'success'" [class.error]="messageType() === 'error'" *ngIf="message()">
+      {{ message() }}
+    </div>
+
+    <!-- Loading -->
+    <div class="fixed inset-0 z-[150] grid place-items-center bg-white/70 backdrop-blur-[2px]" *ngIf="loading()">
+      <div class="flex flex-col items-center">
+        <span class="h-9 w-9 animate-spin rounded-full border-[3px] border-[#e4e7f2] border-t-[#6366f1]"></span>
+        <p class="mt-3 text-[13px] font-semibold text-[#667085]">Chargement...</p>
+      </div>
+    </div>
+
+    <!-- ===== TAB: DASHBOARD ===== -->
+    <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5" *ngIf="activeTab() === 'dashboard' && !loading() && stats() as s">
+      <div class="ui-stat">
+        <span class="ui-icon-tile bg-indigo-50 text-indigo-600"><i class="bi bi-people" aria-hidden="true"></i></span>
+        <div class="min-w-0">
+          <div class="text-[21px] font-extrabold leading-none text-[#101828]">{{ s.total_users }}</div>
+          <div class="mt-1.5 text-[12px] font-medium text-[#667085]">Utilisateurs</div>
+        </div>
+      </div>
+      <div class="ui-stat">
+        <span class="ui-icon-tile bg-emerald-50 text-emerald-600"><i class="bi bi-mortarboard" aria-hidden="true"></i></span>
+        <div class="min-w-0">
+          <div class="text-[21px] font-extrabold leading-none text-[#101828]">{{ s.total_etudiants }}</div>
+          <div class="mt-1.5 text-[12px] font-medium text-[#667085]">Étudiants</div>
+        </div>
+      </div>
+      <div class="ui-stat">
+        <span class="ui-icon-tile bg-violet-50 text-violet-600"><i class="bi bi-person-workspace" aria-hidden="true"></i></span>
+        <div class="min-w-0">
+          <div class="text-[21px] font-extrabold leading-none text-[#101828]">{{ s.total_enseignants }}</div>
+          <div class="mt-1.5 text-[12px] font-medium text-[#667085]">Enseignants</div>
+        </div>
+      </div>
+      <div class="ui-stat">
+        <span class="ui-icon-tile bg-amber-50 text-amber-600"><i class="bi bi-shield-lock" aria-hidden="true"></i></span>
+        <div class="min-w-0">
+          <div class="text-[21px] font-extrabold leading-none text-[#101828]">{{ s.total_admins }}</div>
+          <div class="mt-1.5 text-[12px] font-medium text-[#667085]">Admins</div>
+        </div>
+      </div>
+      <div class="ui-stat">
+        <span class="ui-icon-tile bg-sky-50 text-sky-600"><i class="bi bi-book" aria-hidden="true"></i></span>
+        <div class="min-w-0">
+          <div class="text-[21px] font-extrabold leading-none text-[#101828]">{{ s.total_cours }}</div>
+          <div class="mt-1.5 text-[12px] font-medium text-[#667085]">Cours</div>
+        </div>
+      </div>
+      <div class="ui-stat">
+        <span class="ui-icon-tile bg-teal-50 text-teal-600"><i class="bi bi-journal-bookmark" aria-hidden="true"></i></span>
+        <div class="min-w-0">
+          <div class="text-[21px] font-extrabold leading-none text-[#101828]">{{ s.total_chapitres }}</div>
+          <div class="mt-1.5 text-[12px] font-medium text-[#667085]">Chapitres</div>
+        </div>
+      </div>
+      <div class="ui-stat">
+        <span class="ui-icon-tile bg-pink-50 text-pink-600"><i class="bi bi-folder" aria-hidden="true"></i></span>
+        <div class="min-w-0">
+          <div class="text-[21px] font-extrabold leading-none text-[#101828]">{{ s.total_ressources }}</div>
+          <div class="mt-1.5 text-[12px] font-medium text-[#667085]">Ressources</div>
+        </div>
+      </div>
+      <div class="ui-stat">
+        <span class="ui-icon-tile bg-rose-50 text-rose-600"><i class="bi bi-pencil-square" aria-hidden="true"></i></span>
+        <div class="min-w-0">
+          <div class="text-[21px] font-extrabold leading-none text-[#101828]">{{ s.total_quiz }}</div>
+          <div class="mt-1.5 text-[12px] font-medium text-[#667085]">Quiz</div>
+        </div>
+      </div>
+      <div class="ui-stat">
+        <span class="ui-icon-tile bg-cyan-50 text-cyan-600"><i class="bi bi-clipboard-check" aria-hidden="true"></i></span>
+        <div class="min-w-0">
+          <div class="text-[21px] font-extrabold leading-none text-[#101828]">{{ s.total_attempts }}</div>
+          <div class="mt-1.5 text-[12px] font-medium text-[#667085]">Tentatives</div>
+        </div>
+      </div>
+      <div class="ui-stat">
+        <span class="ui-icon-tile bg-orange-50 text-orange-600"><i class="bi bi-trophy" aria-hidden="true"></i></span>
+        <div class="min-w-0">
+          <div class="text-[21px] font-extrabold leading-none text-[#101828]">{{ s.avg_score }}%</div>
+          <div class="mt-1.5 text-[12px] font-medium text-[#667085]">Score moyen</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TAB: UTILISATEURS ===== -->
+    <section *ngIf="activeTab() === 'utilisateurs' && !loading()">
+      <div class="ui-card overflow-x-auto">
+        <table class="ui-table min-w-[900px]">
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Email</th>
+              <th>Rôle</th>
+              <th>Statut</th>
+              <th>Inscrit le</th>
+              <th>Dernière connexion</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let u of users()">
+              <td>
+                <div class="flex items-center gap-3">
+                  <span class="grid h-9 w-9 flex-none place-items-center rounded-full bg-[#eef2ff] text-[11.5px] font-bold text-[#4f46e5]">{{ (u.prenom[0] || '') + (u.nom[0] || '') | uppercase }}</span>
+                  <div class="min-w-0">
+                    <strong class="block text-[13px] font-semibold text-[#101828]">{{ u.prenom }} {{ u.nom }}</strong>
+                    <span class="block text-[11.5px] text-[#98a2b3]" *ngIf="u.telephone">{{ u.telephone }}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="max-w-[220px] truncate">{{ u.email }}</td>
+              <td>
+                <select class="ui-input w-auto px-2.5 py-1.5 text-[12.5px]" [value]="u.role" (change)="changeRole(u, $event)" [disabled]="actionLoading() === u.id">
+                  <option value="etudiant">Étudiant</option>
+                  <option value="enseignant">Enseignant</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </td>
+              <td>
+                <span class="ui-badge" [class.active]="u.status === 1" [class.inactive]="u.status === 0">
+                  {{ u.status === 1 ? 'Actif' : 'Désactivé' }}
+                </span>
+              </td>
+              <td>{{ u.created_at | date:'dd/MM/yyyy' }}</td>
+              <td>{{ u.last_login_at ? (u.last_login_at | date:'dd/MM HH:mm') : 'Jamais' }}</td>
+              <td>
+                <div class="flex items-center gap-2">
+                  <button class="ui-icon-btn" (click)="toggleStatus(u)" [disabled]="actionLoading() === u.id" [title]="u.status === 1 ? 'Désactiver' : 'Activer'">
+                    <i class="bi" [ngClass]="u.status === 1 ? 'bi-slash-circle' : 'bi-check-circle'" aria-hidden="true"></i>
+                  </button>
+                  <button class="ui-icon-btn ui-icon-btn--danger" (click)="deleteUser(u)" [disabled]="actionLoading() === u.id" title="Supprimer">
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="py-10 text-center text-[13.5px] text-[#98a2b3]" *ngIf="users().length === 0">Aucun utilisateur trouvé.</p>
+    </section>
+
+    <!-- ===== TAB: MATIÈRES ===== -->
+    <section *ngIf="activeTab() === 'matieres' && !loading()">
+      <!-- Formulaire création -->
+      <div class="ui-card mb-5 p-5" *ngIf="showCreateForm()">
+        <h2 class="ui-title mb-4 flex items-center gap-2 text-[15px]">
+          <i class="bi bi-plus-lg text-[16px] text-[#6366f1]" aria-hidden="true"></i>Nouvelle matière
+        </h2>
+
+        <div class="grid gap-4">
+          <div>
+            <label for="titre" class="mb-1.5 block text-[12.5px] font-semibold text-[#344054]">Titre *</label>
+            <input id="titre" type="text" [(ngModel)]="newCours.titre" placeholder="Ex : Programmation Java" class="ui-input" />
+          </div>
+
+          <div>
+            <label for="description" class="mb-1.5 block text-[12.5px] font-semibold text-[#344054]">Description *</label>
+            <textarea id="description" [(ngModel)]="newCours.description" rows="3" placeholder="Décrivez le contenu de la matière..." class="ui-input resize-y"></textarea>
+          </div>
+
+          <div>
+            <label for="categorie" class="mb-1.5 block text-[12.5px] font-semibold text-[#344054]">Catégorie</label>
+            <input id="categorie" type="text" [(ngModel)]="newCours.categorie" placeholder="Ex : Informatique" class="ui-input" />
+          </div>
+
+          <div class="flex flex-wrap gap-3">
+            <button class="ui-btn" (click)="createCours()" [disabled]="creating()">
+              <span *ngIf="creating()" class="flex items-center gap-2"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Création...</span>
+              <span *ngIf="!creating()" class="flex items-center gap-2"><i class="bi bi-check-circle" aria-hidden="true"></i>Créer la matière</span>
+            </button>
+            <button class="ui-btn ui-btn--ghost" (click)="toggleCreateForm()">Annuler</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barre d'actions + Tableau -->
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <span class="text-[13px] font-semibold text-[#667085]">{{ coursList().length }} matière(s)</span>
+        <button class="ui-btn ui-btn--soft" (click)="toggleCreateForm()">
+          <span *ngIf="showCreateForm()" class="flex items-center gap-2"><i class="bi bi-x-lg text-[13px]" aria-hidden="true"></i>Fermer</span>
+          <span *ngIf="!showCreateForm()" class="flex items-center gap-2"><i class="bi bi-plus-lg text-[13px]" aria-hidden="true"></i>Ajouter une matière</span>
+        </button>
+      </div>
+
+      <div class="ui-card overflow-x-auto">
+        <table class="ui-table min-w-[900px]">
+          <thead>
+            <tr>
+              <th>Matière</th>
+              <th>Catégorie</th>
+              <th>Niveau</th>
+              <th>Chapitres</th>
+              <th>Créée par</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of coursList()">
+              <td class="max-w-[320px]">
+                <strong class="block text-[13px] font-semibold text-[#101828]">{{ c.titre }}</strong>
+                <span class="block text-[11.5px] leading-snug text-[#98a2b3]">{{ c.description | slice:0:70 }}{{ c.description.length > 70 ? '…' : '' }}</span>
+              </td>
+              <td>{{ c.categorie || '—' }}</td>
+              <td><span class="ui-badge ui-badge--info">{{ c.niveau }}</span></td>
+              <td>{{ c.nb_chapitres }}</td>
+              <td>{{ c.enseignant_prenom ? c.enseignant_prenom + ' ' + c.enseignant_nom : '—' }}</td>
+              <td>{{ c.created_at | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <div class="flex items-center gap-2">
+                  <a class="ui-icon-btn" [routerLink]="['/cours', c.id]" title="Voir"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                  <button class="ui-icon-btn ui-icon-btn--danger" (click)="deleteCours(c)" [disabled]="actionLoading() === c.id" title="Supprimer">
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="py-10 text-center text-[13.5px] text-[#98a2b3]" *ngIf="coursList().length === 0">Aucune matière trouvée.</p>
+    </section>
+
+    <!-- ===== TAB: QUIZ ===== -->
+    <section *ngIf="activeTab() === 'quiz' && !loading()">
+      <div class="ui-card overflow-x-auto">
+        <table class="ui-table min-w-[900px]">
+          <thead>
+            <tr>
+              <th>Quiz</th>
+              <th>Cours / Chapitre</th>
+              <th>Questions</th>
+              <th>Tentatives</th>
+              <th>Créé par</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let q of quizList()">
+              <td>
+                <strong class="block text-[13px] font-semibold text-[#101828]">{{ q.titre }}</strong>
+                <span class="block text-[11.5px] text-[#98a2b3]">{{ q.methode_generation }}</span>
+              </td>
+              <td>
+                <span class="block text-[13px] font-medium text-[#101828]">{{ q.cours_titre }}</span>
+                <span class="block text-[11.5px] text-[#98a2b3]">{{ q.chapitre_titre }}</span>
+              </td>
+              <td>{{ q.nombre_questions }}</td>
+              <td>{{ q.nb_attempts }}</td>
+              <td>{{ q.createur_prenom ? q.createur_prenom + ' ' + q.createur_nom : '—' }}</td>
+              <td>{{ q.created_at | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <div class="flex items-center gap-2">
+                  <a class="ui-icon-btn" [routerLink]="['/quiz', q.id]" title="Voir le quiz"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                  <button class="ui-icon-btn ui-icon-btn--danger" (click)="deleteQuiz(q)" [disabled]="actionLoading() === q.id" title="Supprimer">
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="py-10 text-center text-[13.5px] text-[#98a2b3]" *ngIf="quizList().length === 0">Aucun quiz trouvé.</p>
+    </section>
+
+    <!-- ===== TAB: RESSOURCES ===== -->
+    <section *ngIf="activeTab() === 'ressources' && !loading()">
+      <div class="ui-card overflow-x-auto">
+        <table class="ui-table min-w-[900px]">
+          <thead>
+            <tr>
+              <th>Fichier</th>
+              <th>Type</th>
+              <th>Taille</th>
+              <th>Cours / Chapitre</th>
+              <th>Ajouté par</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of ressources()">
+              <td>
+                <div class="flex items-center gap-3">
+                  <span class="ui-icon-tile h-9 w-9 rounded-[10px] text-[16px]" [ngClass]="r.type === 'pdf' ? 'bg-rose-50 text-rose-500' : 'bg-amber-50 text-amber-500'">
+                    <i class="bi" [ngClass]="r.type === 'pdf' ? 'bi-file-earmark-pdf' : 'bi-film'" aria-hidden="true"></i>
+                  </span>
+                  <strong class="text-[13px] font-semibold text-[#101828]">{{ r.nom_original }}</strong>
+                </div>
+              </td>
+              <td>
+                <span class="ui-badge" [class.pdf]="r.type === 'pdf'" [class.video]="r.type === 'video'">
+                  {{ r.type === 'pdf' ? 'PDF' : 'Vidéo' }}
+                </span>
+              </td>
+              <td>{{ formatSize(r.taille) }}</td>
+              <td>
+                <span class="block text-[13px] font-medium text-[#101828]">{{ r.cours_titre }}</span>
+                <span class="block text-[11.5px] text-[#98a2b3]">{{ r.chapitre_titre }}</span>
+              </td>
+              <td>{{ r.enseignant_prenom ? r.enseignant_prenom + ' ' + r.enseignant_nom : '—' }}</td>
+              <td>{{ r.created_at | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <div class="flex items-center gap-2">
+                  <button class="ui-icon-btn ui-icon-btn--danger" (click)="deleteRessource(r)" [disabled]="actionLoading() === r.id" title="Supprimer">
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="py-10 text-center text-[13.5px] text-[#98a2b3]" *ngIf="ressources().length === 0">Aucune ressource trouvée.</p>
+    </section>
+  </main>
+</div>

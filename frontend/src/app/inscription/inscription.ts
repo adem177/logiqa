@@ -4,14 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 
-type Role = 'etudiant' | 'enseignant';
+type Role = 'etudiant' | 'enseignant' | 'admin';
 
 @Component({
   selector: 'app-inscription',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
-  templateUrl: './inscription.html',
-  styleUrls: ['./inscription.css']
+  templateUrl: './inscription.html'
 })
 export class InscriptionComponent {
   // Rôle
@@ -26,11 +25,12 @@ export class InscriptionComponent {
   confirmPassword = '';
   acceptTerms = false;
 
-  // États
-  errorVisible = false;
-  errorMessage = '';
-  successVisible = false;
-  isSubmitting = false;
+  // États (signaux : en mode zoneless, seuls les signaux/événements
+  // déclenchent la mise à jour du rendu — voir bug « Chargement de vos cours... »)
+  errorVisible = signal(false);
+  errorMessage = signal('');
+  successVisible = signal(false);
+  isSubmitting = signal(false);
   showPassword = false;
 
   // Validation
@@ -158,9 +158,9 @@ export class InscriptionComponent {
 
   // --- Erreurs ---
   private showError(msg: string) {
-    this.errorMessage = msg;
-    this.errorVisible = true;
-    this.successVisible = false;
+    this.errorMessage.set(msg);
+    this.errorVisible.set(true);
+    this.successVisible.set(false);
   }
 
   // --- Inscription ---
@@ -172,7 +172,7 @@ export class InscriptionComponent {
     this.validatePassword();
     this.validateConfirmPassword();
 
-    this.errorVisible = false;
+    this.errorVisible.set(false);
 
     // Vérifications finales
     if (!this.isFormValid()) {
@@ -180,7 +180,7 @@ export class InscriptionComponent {
       return;
     }
 
-    this.isSubmitting = true;
+    this.isSubmitting.set(true);
 
     // Envoi des données
     const formData = {
@@ -195,15 +195,15 @@ export class InscriptionComponent {
     this.http.post('http://localhost:3000/api/register', formData)
       .subscribe({
         next: () => {
-          this.successVisible = true;
-          this.isSubmitting = false;
+          this.successVisible.set(true);
+          this.isSubmitting.set(false);
           setTimeout(() => {
             this.router.navigate(['/login']);
           }, 1500);
         },
         error: (err) => {
           this.showError(err.error?.error || 'Erreur lors de la création du compte.');
-          this.isSubmitting = false;
+          this.isSubmitting.set(false);
         }
       });
   }

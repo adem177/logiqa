@@ -2,6 +2,9 @@ import { Component, signal, computed, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { timeout } from 'rxjs/operators';
+import { Auth } from '../core/auth';
 
 interface Course {
   id: number;
@@ -17,11 +20,29 @@ interface Course {
   selector: 'app-courses',
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
-  templateUrl: './cours.html',
-  styleUrls: ['./cours.css']
+  templateUrl: './cours.html'
 })
 export class CoursesComponent implements OnInit {
   private router = inject(Router);
+  private http = inject(HttpClient);
+  private auth = inject(Auth);
+
+  private readonly API_URL = 'http://localhost:3000';
+
+  /** Nom de l'utilisateur connecté */
+  userFullName = signal<string>('');
+
+  // Images associées aux matières initiales (par ID)
+  private readonly COURSE_IMAGES: { [key: number]: string } = {
+    1: 'c_language.png',
+    2: 'algebra.jpg',
+    3: 'analyse.jpg',
+    4: 'logique_archi.png',
+    5: 'algo.jpg',
+    6: 'bdd.jpg',
+    7: 'reseaux.jpg',
+    8: 'os.jpg'
+  };
 
   courses = signal<Course[]>([]);
   searchTerm = signal<string>('');
@@ -127,16 +148,45 @@ export class CoursesComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    this.loadUserName();
     this.loadCourses();
+  }
+
+  /** Récupère le nom de l'utilisateur connecté depuis le localStorage */
+  private loadUserName(): void {
+    const user = this.auth.getUser();
+    if (user) {
+      const nom = user.nom || '';
+      const prenom = user.prenom || '';
+      this.userFullName.set(`${prenom} ${nom}`.trim() || user.email || 'Utilisateur');
+    }
   }
 
   loadCourses(): void {
     this.isLoading.set(true);
     this.error.set(null);
-    setTimeout(() => {
-      this.courses.set(this.allCourses);
-      this.isLoading.set(false);
-    }, 500);
+
+    this.http.get<any[]>(`${this.API_URL}/api/cours`).pipe(timeout(5000)).subscribe({
+      next: (data) => {
+        const mapped: Course[] = (Array.isArray(data) ? data : []).map((c, index) => ({
+          id: c.id,
+          title: c.titre,
+          category: c.categorie || 'Divers',
+          description: c.description || '',
+          lessons: c.nb_chapitres || 0,
+          tags: [c.niveau].filter(Boolean),
+          image: this.COURSE_IMAGES[c.id] || 'c_language.png'
+        }));
+        // Repli si l'API répond une liste vide (base indisponible/anormale)
+        this.courses.set(mapped.length > 0 ? mapped : this.allCourses);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        // Repli sur les données statiques si l'API est indisponible
+        this.courses.set(this.allCourses);
+        this.isLoading.set(false);
+      }
+    });
   }
 
   filteredCourses = computed(() => {

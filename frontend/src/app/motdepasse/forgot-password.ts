@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -8,14 +8,14 @@ import { RouterModule } from '@angular/router';
   selector: 'app-forgot-password',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  templateUrl: './forgot-password.html',
-  styleUrls: ['./forgot-password.css']
+  templateUrl: './forgot-password.html'
 })
 export class ForgotPasswordComponent {
   forgotForm: FormGroup;
-  message: string = '';
-  errorMessage: string = '';
-  loading: boolean = false;
+  // Signaux : garantissent le rendu après un subscribe (mode zoneless)
+  message = signal('');
+  errorMessage = signal('');
+  loading = signal(false);
 
   constructor(private fb: FormBuilder, private http: HttpClient) {
     this.forgotForm = this.fb.group({
@@ -26,20 +26,20 @@ export class ForgotPasswordComponent {
   onSubmit() {
     if (this.forgotForm.invalid) return;
 
-    this.loading = true;
-    this.message = '';
-    this.errorMessage = '';
+    this.loading.set(true);
+    this.message.set('');
+    this.errorMessage.set('');
 
     // Port 3000 au lieu de 5000 pour correspondre à Flask
     this.http.post('http://localhost:3000/api/forgot-password', this.forgotForm.value)
       .subscribe({
         next: (res: any) => {
-          this.message = res.message;
-          this.loading = false;
+          this.message.set(res.message);
+          this.loading.set(false);
         },
         error: (err) => {
-          this.errorMessage = err.error?.error || 'Une erreur est survenue.';
-          this.loading = false;
+          this.errorMessage.set(err.error?.error || 'Une erreur est survenue.');
+          this.loading.set(false);
         }
       });
   }

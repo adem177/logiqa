@@ -6,18 +6,18 @@ import { RouterLink } from '@angular/router';
   selector: 'app-home',
   standalone: true,
   imports: [CommonModule, RouterLink],
-  templateUrl: './home.html',
-  styleUrls: ['./home.css']
+  templateUrl: './home.html'
 })
 export class HomeComponent {
   currentSlide = 0;
 
   slides = [
     {
+      badge: 'Plateforme E-Learning',
       title: 'LOGIQA',
       subtitle: 'La plateforme E-Learning qui connecte étudiants, enseignants et administrations',
       description: 'Un espace pédagogique unique, simple et sécurisé',
-      detail: 'Profitez du meilleur contenu pédagogique et de la plus grande bibliothèque numérique pour vous accompagner tout au long de votre parcours.', 
+      detail: 'Profitez du meilleur contenu pédagogique et de la plus grande bibliothèque numérique pour vous accompagner tout au long de votre parcours.',
     }
   ];
 

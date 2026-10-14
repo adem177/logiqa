@@ -8,21 +8,30 @@ import { TeacherDashboardComponent } from './dashboard-enseignant/enseignant';
 import { CoursesComponent } from './cours/cours';
 import { CoursContentComponent } from './matiere/matiere';
 import { EnseignantUploadComponent } from './upload_enseignant/enseignant-upload';
-import { ForgotPasswordComponent } from './motdepasse/forgot-password'; // ← Import Mot de passe oublié
-import { ResetPasswordComponent } from './reset-password/reset-password'; // ← Import Réinitialisation
-import { AboutComponent } from './about-us/about-us'; // ← Import About us
+import { ForgotPasswordComponent } from './motdepasse/forgot-password';
+import { ResetPasswordComponent } from './reset-password/reset-password';
+import { AboutComponent } from './about-us/about-us';
+import { QuizComponent } from './quiz/quiz';
+import { GenererQuizComponent } from './generer-quiz/generer-quiz';
+import { AdminDashboardComponent } from './dashboard-admin/dashboard-admin';
+import { ProfilComponent } from './profil/profil';
+import { authGuard, roleGuard } from './core/auth-guard';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'inscription', component: InscriptionComponent },
-  { path: 'forgot-password', component: ForgotPasswordComponent }, // ← Route mot de passe oublié
-  { path: 'reset-password', component: ResetPasswordComponent },   // ← Route nouveau mot de passe
-  { path: 'dashboard-enseignant', component: TeacherDashboardComponent },
-  { path: 'matiere', component: CoursContentComponent }, 
-  { path: 'cours', component: CoursesComponent },
-  { path: 'enseignant/upload-cours', component: EnseignantUploadComponent },
-  { path: 'cours/:id', component: CoursContentComponent },
-  { path: 'about-us', component: AboutComponent }, // ← Route About us
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: ResetPasswordComponent },
+  { path: 'dashboard-enseignant', component: TeacherDashboardComponent, canActivate: [roleGuard(['enseignant', 'admin'])] },
+  { path: 'dashboard-admin', component: AdminDashboardComponent, canActivate: [roleGuard(['admin'])] },
+  { path: 'matiere', component: CoursContentComponent, canActivate: [authGuard] }, 
+  { path: 'cours', component: CoursesComponent, canActivate: [authGuard] },
+  { path: 'enseignant/upload-cours', component: EnseignantUploadComponent, canActivate: [roleGuard(['enseignant', 'admin'])] },
+  { path: 'cours/:id', component: CoursContentComponent, canActivate: [authGuard] },
+  { path: 'about-us', component: AboutComponent },
+  { path: 'profil', component: ProfilComponent, canActivate: [authGuard] },
+  { path: 'quiz/:id', component: QuizComponent, canActivate: [authGuard] },
+  { path: 'generer-quiz', component: GenererQuizComponent, canActivate: [roleGuard(['enseignant', 'admin'])] },
   { path: '**', redirectTo: '' }
 ];
