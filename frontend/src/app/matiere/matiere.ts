@@ -7,6 +7,7 @@ import { COURSES_DETAILS, CourseDetail, Chapter } from '../data/course-data';
 import { CourseService, Course as StoredCourse } from '../services/course.service';
 import { QuizService, Quiz } from '../services/quiz.service';
 import { Auth } from '../core/auth';
+import { environment } from '../../environments/environements';
 
 type TabKey = 'cours' | 'examen';
 type ResourceType = 'video' | 'pdf';
@@ -36,7 +37,7 @@ export class CoursContentComponent implements OnInit {
   private sanitizer = inject(DomSanitizer);
   private auth = inject(Auth);
 
-  private readonly API_URL = 'http://localhost:3000';
+  private readonly API_URL = environment.apiUrl;
   private readonly UPLOAD_ENDPOINT = `${this.API_URL}/api/chapitres`;
 
   // ⚠️ Extension utilisée pour les vidéos statiques (public/videos/chapitreN_index.EXT).

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environements';
 
 export interface AdminStats {
   total_users: number;
@@ -70,7 +71,7 @@ export interface AdminRessource {
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
-  private API_URL = 'http://localhost:3000';
+  private API_URL = environment.apiUrl;
 
   constructor(private http: HttpClient) {}
 

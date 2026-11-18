@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
+import { environment } from '../../environments/environements';
 
 @Component({
   selector: 'app-forgot-password',
@@ -31,7 +32,7 @@ export class ForgotPasswordComponent {
     this.errorMessage.set('');
 
     // Port 3000 au lieu de 5000 pour correspondre à Flask
-    this.http.post('http://localhost:3000/api/forgot-password', this.forgotForm.value)
+    this.http.post(`${environment.apiUrl}/api/forgot-password`, this.forgotForm.value)
       .subscribe({
         next: (res: any) => {
           this.message.set(res.message);

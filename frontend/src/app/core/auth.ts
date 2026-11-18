@@ -2,6 +2,7 @@ import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environements';
 
 @Injectable({
   providedIn: 'root'
@@ -10,7 +11,7 @@ export class Auth {
   private router = inject(Router);
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
-  private API_URL = 'http://localhost:3000';
+  private API_URL = environment.apiUrl;
 
   /** localStorage n'existe que dans le navigateur (pas en SSR/serveur). */
   private get storage(): Storage | null {

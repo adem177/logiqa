@@ -5,13 +5,15 @@ import threading
 import os
 import uuid
 import hashlib
+import mimetypes
+import tempfile
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from init_db import seed_admin, init_database
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
+from werkzeug.utils import safe_join, secure_filename
 import bcrypt
 import jwt
 from dotenv import load_dotenv
@@ -65,6 +67,89 @@ os.makedirs(UPLOAD_PDFS_DIR, exist_ok=True)
 # Chemin vers les PDFs statiques du frontend (pour la génération de quiz)
 FRONTEND_PDFS_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'public', 'pdfs')
 FRONTEND_VIDEOS_DIR = os.path.join(BASE_DIR, '..', 'frontend', 'public', 'videos')
+
+# Mapping chapitre_id -> (course_slug, numero de chapitre)
+# Les slugs doivent correspondre aux dossiers de frontend/public/pdfs et /videos.
+CHAPTER_MAP = {
+    1: ('langage-c', 1), 2: ('langage-c', 2), 3: ('langage-c', 3),
+    4: ('langage-c', 4), 5: ('langage-c', 5), 6: ('langage-c', 6),
+    7: ('algebre', 1), 8: ('algebre', 2), 9: ('algebre', 3),
+    10: ('algebre', 4), 11: ('algebre', 5), 12: ('algebre', 6),
+    13: ('analyse', 1), 14: ('analyse', 2), 15: ('analyse', 3),
+    16: ('analyse', 4), 17: ('analyse', 5), 18: ('analyse', 6),
+    19: ('systemes-logiques', 1), 20: ('systemes-logiques', 2),
+    21: ('systemes-logiques', 3), 22: ('systemes-logiques', 4),
+    23: ('systemes-logiques', 5), 24: ('systemes-logiques', 6),
+    25: ('algorithmes', 1), 26: ('algorithmes', 2), 27: ('algorithmes', 3),
+    28: ('algorithmes', 4), 29: ('algorithmes', 5), 30: ('algorithmes', 6),
+    31: ('base-de-donnees', 1), 32: ('base-de-donnees', 2), 33: ('base-de-donnees', 3),
+    34: ('base-de-donnees', 4), 35: ('base-de-donnees', 5), 36: ('base-de-donnees', 6),
+    37: ('reseaux', 1), 38: ('reseaux', 2), 39: ('reseaux', 3),
+    40: ('reseaux', 4), 41: ('reseaux', 5), 42: ('reseaux', 6),
+    43: ('systeme-exploitation', 1), 44: ('systeme-exploitation', 2),
+    45: ('systeme-exploitation', 3), 46: ('systeme-exploitation', 4),
+    47: ('systeme-exploitation', 5), 48: ('systeme-exploitation', 6),
+}
+
+VIDEO_EXTENSIONS = ('.mp4', '.webm', '.mov', '.avi', '.mkv')
+
+
+def _resolve_static_sources(chapitre_id):
+    """PDFs et vidéos statiques de frontend/public pour un chapitre.
+
+    Returns:
+        (pdf_files, video_files) — listes vides si le chapitre n'est pas
+        référencé dans CHAPTER_MAP ou si les dossiers n'existent pas.
+    """
+    if chapitre_id not in CHAPTER_MAP:
+        return [], []
+
+    course_slug, chap_num = CHAPTER_MAP[chapitre_id]
+    pdf_files, video_files = [], []
+
+    static_pdf_dir = os.path.join(FRONTEND_PDFS_DIR, course_slug, f'chapitre{chap_num}')
+    if os.path.isdir(static_pdf_dir):
+        pdf_files = [
+            os.path.join(static_pdf_dir, f)
+            for f in sorted(os.listdir(static_pdf_dir))
+            if f.lower().endswith('.pdf')
+        ]
+
+    static_video_dir = os.path.join(FRONTEND_VIDEOS_DIR, course_slug, f'chapitre{chap_num}')
+    if os.path.isdir(static_video_dir):
+        video_files = [
+            os.path.join(static_video_dir, f)
+            for f in sorted(os.listdir(static_video_dir))
+            if f.lower().endswith(VIDEO_EXTENSIONS)
+        ]
+
+    return pdf_files, video_files
+
+
+def _merge_sources(static_pdfs, static_videos, ressources):
+    """Fusionne les ressources statiques (frontend/public) et celles de la BDD.
+
+    Les statiques passent en premier : le texte est tronqué à 8000 caractères
+    en aval, on veut donc que le support de cours fasse autorité sur
+    d'éventuels uploads erronés. Les doublons sont éliminés par chemin résolu.
+
+    Returns:
+        (pdf_files, video_files, temp_files) — temp_files à nettoyer en fin
+        de requête (fichiers materialisés depuis des BLOB).
+    """
+    db_pdfs, db_videos, temp_files = _resolve_chapter_sources(ressources)
+
+    def _dedupe(*groups):
+        seen, out = set(), []
+        for group in groups:
+            for path in group:
+                key = os.path.normcase(os.path.abspath(path))
+                if key not in seen:
+                    seen.add(key)
+                    out.append(path)
+        return out
+
+    return _dedupe(static_pdfs, db_pdfs), _dedupe(static_videos, db_videos), temp_files
 
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov', 'avi', 'mkv'}
 ALLOWED_PDF_EXTENSIONS = {'pdf'}
@@ -180,9 +265,61 @@ def create_token_response(user, cursor, conn):
     return {"success": True, "user": user, "token": token, "expires_at": expires_at.isoformat()}
 
 # ===== ROUTES =====
+
+# En production, Flask sert lui-même le bundle construit par `ng build`
+# (frontend/dist/logiqa/browser) : une seule origine, donc aucune requête
+# CORS et une seule URL à partager. En développement (`ng serve` sur le port
+# 4200) ce dossier n'existe pas : on garde alors l'ancienne réponse JSON.
+BROWSER_DIST = os.path.join(BASE_DIR, '..', 'frontend', 'dist', 'logiqa', 'browser')
+
+# Sur Windows, le registre déclare .js en « text/plain » : le navigateur
+# refuse alors d'exécuter un module ES (contrôle MIME strict) et la page
+# reste blanche. On force le type correct, inoffensif sous Linux.
+mimetypes.add_type('text/javascript', '.js')
+mimetypes.add_type('text/javascript', '.mjs')
+
+
+def _front_index():
+    """Nom du shell Angular à servir.
+
+    `index.html` quand le prerender a écrit la page, `index.csr.html` pour le
+    rendu 100 % client (c'est ce que produit la configuration actuelle du
+    projet, qui garde le SSR activé). Retourne None si rien n'est construit.
+    """
+    for nom in ('index.html', 'index.csr.html'):
+        if os.path.isfile(os.path.join(BROWSER_DIST, nom)):
+            return nom
+    return None
+
+
 @app.route('/')
 def home():
+    index = _front_index()
+    if index:
+        return send_from_directory(BROWSER_DIST, index)
     return jsonify({"message": "API LOGIQA fonctionne !"})
+
+
+@app.route('/<path:chemin>')
+def front(chemin):
+    """Fichiers du bundle Angular, puis repli sur le shell (routage SPA).
+
+    Les routes d'API ne sont pas concernées : elles sont déclarées ci-dessus
+    et Werkzeug les priorise, mais on les exclut aussi par sécurité pour
+    qu'une faute de frappe ne renvoie jamais une page HTML à un appel XHR.
+    """
+    if chemin.startswith(('api/', 'public/')):
+        return jsonify({"error": "Ressource introuvable."}), 404
+
+    index = _front_index()
+    if index:
+        cible = safe_join(BROWSER_DIST, chemin)
+        if cible and os.path.isfile(cible):
+            return send_from_directory(BROWSER_DIST, chemin)
+        # URL de page (ex. /login, /quiz/3) : on laisse Angular router.
+        return send_from_directory(BROWSER_DIST, index)
+
+    return jsonify({"error": "Frontend non construit (ng build)."}), 404
 
 # ===== INSCRIPTION =====
 @app.route('/api/register', methods=['POST'])
@@ -1043,6 +1180,48 @@ def serve_uploaded_file(resource_type, filename):
 # ===== QUIZ : GÉNÉRATION ET PASSAGE =====
 from quiz_generator import generate_quiz_from_chapter, GROQ_API_KEY, GROQ_MODEL
 
+
+def _resolve_chapter_sources(ressources):
+    """Convertit les ressources d'un chapitre en chemins exploitables.
+
+    Les PDF sont stockés en BLOB dans la colonne `contenu` (nom_fichier reste
+    NULL), tandis que les vidéos vivent sur disque (nom_fichier renseigné).
+    On materialise donc les BLOB dans des fichiers temporaires, et on ignore
+    les lignes sans chemin pour éviter un os.path.join(None).
+
+    Returns:
+        (pdf_files, video_files, temp_files) — l'appelant doit supprimer
+        les fichiers de `temp_files` une fois la génération terminée.
+    """
+    pdf_files, video_files, temp_files = [], [], []
+
+    for r in ressources:
+        if r['type'] == 'pdf':
+            if r.get('nom_fichier'):
+                pdf_files.append(os.path.join(UPLOAD_PDFS_DIR, r['nom_fichier']))
+            elif r.get('contenu'):
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+                try:
+                    tmp.write(r['contenu'])
+                finally:
+                    tmp.close()
+                pdf_files.append(tmp.name)
+                temp_files.append(tmp.name)
+        elif r.get('nom_fichier'):
+            video_files.append(os.path.join(UPLOAD_VIDEOS_DIR, r['nom_fichier']))
+
+    return pdf_files, video_files, temp_files
+
+
+def _cleanup_temp_files(temp_files):
+    """Supprime les fichiers temporaires materialisés depuis les BLOB."""
+    for path in temp_files or []:
+        try:
+            os.unlink(path)
+        except OSError:
+            logger.warning(f"Impossible de supprimer le fichier temporaire {path}")
+
+
 @app.route('/api/test-groq', methods=['GET'])
 def test_groq():
     """Teste la connexion à Groq."""
@@ -1087,6 +1266,8 @@ def generer_quiz(chapitre_id):
     if not conn:
         return jsonify({"error": "Erreur connexion base de données"}), 500
 
+    temp_files = []  # PDF materialisés depuis des BLOB, à nettoyer en fin de requête
+
     try:
         cursor = conn.cursor()
 
@@ -1098,66 +1279,26 @@ def generer_quiz(chapitre_id):
 
         # Récupérer les ressources du chapitre
         cursor.execute(
-            "SELECT type, nom_fichier FROM chapitre_ressources WHERE chapitre_id = %s",
+            "SELECT type, nom_fichier, contenu FROM chapitre_ressources WHERE chapitre_id = %s",
             (chapitre_id,)
         )
         ressources = cursor.fetchall()
 
-        pdf_files = [os.path.join(UPLOAD_PDFS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'pdf']
-        video_files = [os.path.join(UPLOAD_VIDEOS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'video']
+        # Fusion : PDFs/vidéos statiques (frontend/public) + ressources uploadées (BDD)
+        static_pdfs, static_videos = _resolve_static_sources(chapitre_id)
+        pdf_files, video_files, temp_files = _merge_sources(static_pdfs, static_videos, ressources)
 
-        # Si aucune ressource en base, chercher les PDFs et vidéos statiques du frontend
-        if not pdf_files and not video_files:
-            # Mapping chapitre_id -> (course_slug, chapter_number)
-            CHAPTER_MAP = {
-                1: ('langage-c', 1), 2: ('langage-c', 2), 3: ('langage-c', 3),
-                4: ('langage-c', 4), 5: ('langage-c', 5), 6: ('langage-c', 6),
-                7: ('algebre', 1), 8: ('algebre', 2), 9: ('algebre', 3),
-                10: ('algebre', 4), 11: ('algebre', 5), 12: ('algebre', 6),
-                13: ('analyse', 1), 14: ('analyse', 2), 15: ('analyse', 3),
-                16: ('analyse', 4), 17: ('analyse', 5), 18: ('analyse', 6),
-                19: ('systemes-logiques', 1), 20: ('systemes-logiques', 2),
-                21: ('systemes-logiques', 3), 22: ('systemes-logiques', 4),
-                23: ('systemes-logiques', 5), 24: ('systemes-logiques', 6),
-                25: ('algorithmes', 1), 26: ('algorithmes', 2), 27: ('algorithmes', 3),
-                28: ('algorithmes', 4), 29: ('algorithmes', 5), 30: ('algorithmes', 6),
-                31: ('base-de-donnees', 1), 32: ('base-de-donnees', 2), 33: ('base-de-donnees', 3),
-                34: ('base-de-donnees', 4), 35: ('base-de-donnees', 5), 36: ('base-de-donnees', 6),
-                37: ('reseaux', 1), 38: ('reseaux', 2), 39: ('reseaux', 3),
-                40: ('reseaux', 4), 41: ('reseaux', 5), 42: ('reseaux', 6),
-                43: ('systeme-exploitation', 1), 44: ('systeme-exploitation', 2),
-                45: ('systeme-exploitation', 3), 46: ('systeme-exploitation', 4),
-                47: ('systeme-exploitation', 5), 48: ('systeme-exploitation', 6),
-            }
-            if chapitre_id in CHAPTER_MAP:
-                course_slug, chap_num = CHAPTER_MAP[chapitre_id]
-                static_pdf_dir = os.path.join(FRONTEND_PDFS_DIR, course_slug, f'chapitre{chap_num}')
-                if os.path.exists(static_pdf_dir):
-                    pdf_files = [
-                        os.path.join(static_pdf_dir, f)
-                        for f in os.listdir(static_pdf_dir)
-                        if f.endswith('.pdf')
-                    ]
-                    logger.info(f"PDFs statiques trouvés: {len(pdf_files)} dans {static_pdf_dir}")
-                
-                # Chercher aussi les vidéos
-                static_video_dir = os.path.join(FRONTEND_VIDEOS_DIR, course_slug, f'chapitre{chap_num}')
-                if os.path.exists(static_video_dir):
-                    video_files = [
-                        os.path.join(static_video_dir, f)
-                        for f in os.listdir(static_video_dir)
-                        if f.endswith(('.mp4', '.webm', '.mov', '.avi', '.mkv'))
-                    ]
-                    logger.info(f"Vidéos statiques trouvées: {len(video_files)} dans {static_video_dir}")
+        logger.info(
+            f"Sources chapitre {chapitre_id}: "
+            f"{len(static_pdfs)} PDF statiques, {len(static_videos)} vidéos statiques, "
+            f"{len(pdf_files)} PDF au total, {len(video_files)} vidéos au total"
+        )
 
         # Générer les questions
         questions = generate_quiz_from_chapter(
             pdf_files, video_files, nombre_questions, methode,
             chapter_title=chapitre['titre']
         )
-
-        if not questions:
-            return jsonify({"error": "Impossible de générer des questions à partir des ressources."}), 400
 
         if not questions:
             return jsonify({"error": "Impossible de générer des questions à partir des ressources."}), 400
@@ -1199,6 +1340,7 @@ def generer_quiz(chapitre_id):
         logger.exception("Erreur génération quiz")
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
+        _cleanup_temp_files(temp_files)
         conn.close()
 
 
@@ -1278,6 +1420,8 @@ def regenerer_quiz(quiz_id):
     if not conn:
         return jsonify({"error": "Erreur connexion base de données"}), 500
 
+    temp_files = []  # PDF materialisés depuis des BLOB, à nettoyer en fin de requête
+
     try:
         cursor = conn.cursor()
         cursor.execute("SELECT chapitre_id, nombre_questions, methode_generation FROM quiz WHERE id = %s", (quiz_id,))
@@ -1292,40 +1436,12 @@ def regenerer_quiz(quiz_id):
             return jsonify({"error": "Chapitre introuvable."}), 404
 
         # Récupérer les ressources
-        cursor.execute("SELECT type, nom_fichier FROM chapitre_ressources WHERE chapitre_id = %s", (chapitre_id,))
+        cursor.execute("SELECT type, nom_fichier, contenu FROM chapitre_ressources WHERE chapitre_id = %s", (chapitre_id,))
         ressources = cursor.fetchall()
-        pdf_files = [os.path.join(UPLOAD_PDFS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'pdf']
-        video_files = [os.path.join(UPLOAD_VIDEOS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'video']
 
-        if not pdf_files and not video_files:
-            CHAPTER_MAP = {
-                1: ('langage-c', 1), 2: ('langage-c', 2), 3: ('langage-c', 3),
-                4: ('langage-c', 4), 5: ('langage-c', 5), 6: ('langage-c', 6),
-                7: ('algebre', 1), 8: ('algebre', 2), 9: ('algebre', 3),
-                10: ('algebre', 4), 11: ('algebre', 5), 12: ('algebre', 6),
-                13: ('analyse', 1), 14: ('analyse', 2), 15: ('analyse', 3),
-                16: ('analyse', 4), 17: ('analyse', 5), 18: ('analyse', 6),
-                19: ('systemes-logiques', 1), 20: ('systemes-logiques', 2),
-                21: ('systemes-logiques', 3), 22: ('systemes-logiques', 4),
-                23: ('systemes-logiques', 5), 24: ('systemes-logiques', 6),
-                25: ('algorithmes', 1), 26: ('algorithmes', 2), 27: ('algorithmes', 3),
-                28: ('algorithmes', 4), 29: ('algorithmes', 5), 30: ('algorithmes', 6),
-                31: ('base-de-donnees', 1), 32: ('base-de-donnees', 2), 33: ('base-de-donnees', 3),
-                34: ('base-de-donnees', 4), 35: ('base-de-donnees', 5), 36: ('base-de-donnees', 6),
-                37: ('reseaux', 1), 38: ('reseaux', 2), 39: ('reseaux', 3),
-                40: ('reseaux', 4), 41: ('reseaux', 5), 42: ('reseaux', 6),
-                43: ('systeme-exploitation', 1), 44: ('systeme-exploitation', 2),
-                45: ('systeme-exploitation', 3), 46: ('systeme-exploitation', 4),
-                47: ('systeme-exploitation', 5), 48: ('systeme-exploitation', 6),
-            }
-            if chapitre_id in CHAPTER_MAP:
-                course_slug, chap_num = CHAPTER_MAP[chapitre_id]
-                static_pdf_dir = os.path.join(FRONTEND_PDFS_DIR, course_slug, f'chapitre{chap_num}')
-                if os.path.exists(static_pdf_dir):
-                    pdf_files = [os.path.join(static_pdf_dir, f) for f in os.listdir(static_pdf_dir) if f.endswith('.pdf')]
-                static_video_dir = os.path.join(FRONTEND_VIDEOS_DIR, course_slug, f'chapitre{chap_num}')
-                if os.path.exists(static_video_dir):
-                    video_files = [os.path.join(static_video_dir, f) for f in os.listdir(static_video_dir) if f.endswith(('.mp4', '.webm', '.mov', '.avi', '.mkv'))]
+        # Fusion : PDFs/vidéos statiques (frontend/public) + ressources uploadées (BDD)
+        static_pdfs, static_videos = _resolve_static_sources(chapitre_id)
+        pdf_files, video_files, temp_files = _merge_sources(static_pdfs, static_videos, ressources)
 
         # Générer les nouvelles questions
         questions = generate_quiz_from_chapter(
@@ -1369,6 +1485,7 @@ def regenerer_quiz(quiz_id):
         logger.exception("Erreur régénération quiz")
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
+        _cleanup_temp_files(temp_files)
         conn.close()
 
 
@@ -1386,6 +1503,8 @@ def soumettre_quiz(quiz_id):
     conn = get_connection()
     if not conn:
         return jsonify({"error": "Erreur connexion base de données"}), 500
+
+    temp_files = []  # PDF materialisés depuis des BLOB, à nettoyer en fin de requête
 
     try:
         cursor = conn.cursor()
@@ -1430,45 +1549,16 @@ def soumettre_quiz(quiz_id):
             if not chapitre:
                 return jsonify({"error": "Chapitre introuvable."}), 404
 
-            # Récupérer les ressources
+            # Récupérer les ressources (contenu = BLOB pour les PDF uploadés)
             cursor.execute(
-                "SELECT type, nom_fichier FROM chapitre_ressources WHERE chapitre_id = %s",
+                "SELECT type, nom_fichier, contenu FROM chapitre_ressources WHERE chapitre_id = %s",
                 (chapitre_id,)
             )
             ressources = cursor.fetchall()
-            pdf_files = [os.path.join(UPLOAD_PDFS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'pdf']
-            video_files = [os.path.join(UPLOAD_VIDEOS_DIR, r['nom_fichier']) for r in ressources if r['type'] == 'video']
 
-            # Chercher les PDFs et vidéos statiques du frontend
-            if not pdf_files and not video_files:
-                CHAPTER_MAP = {
-                    1: ('langage-c', 1), 2: ('langage-c', 2), 3: ('langage-c', 3),
-                    4: ('langage-c', 4), 5: ('langage-c', 5), 6: ('langage-c', 6),
-                    7: ('algebre', 1), 8: ('algebre', 2), 9: ('algebre', 3),
-                    10: ('algebre', 4), 11: ('algebre', 5), 12: ('algebre', 6),
-                    13: ('analyse', 1), 14: ('analyse', 2), 15: ('analyse', 3),
-                    16: ('analyse', 4), 17: ('analyse', 5), 18: ('analyse', 6),
-                    19: ('systemes-logiques', 1), 20: ('systemes-logiques', 2),
-                    21: ('systemes-logiques', 3), 22: ('systemes-logiques', 4),
-                    23: ('systemes-logiques', 5), 24: ('systemes-logiques', 6),
-                    25: ('algorithmes', 1), 26: ('algorithmes', 2), 27: ('algorithmes', 3),
-                    28: ('algorithmes', 4), 29: ('algorithmes', 5), 30: ('algorithmes', 6),
-                    31: ('base-de-donnees', 1), 32: ('base-de-donnees', 2), 33: ('base-de-donnees', 3),
-                    34: ('base-de-donnees', 4), 35: ('base-de-donnees', 5), 36: ('base-de-donnees', 6),
-                    37: ('reseaux', 1), 38: ('reseaux', 2), 39: ('reseaux', 3),
-                    40: ('reseaux', 4), 41: ('reseaux', 5), 42: ('reseaux', 6),
-                    43: ('systeme-exploitation', 1), 44: ('systeme-exploitation', 2),
-                    45: ('systeme-exploitation', 3), 46: ('systeme-exploitation', 4),
-                    47: ('systeme-exploitation', 5), 48: ('systeme-exploitation', 6),
-                }
-                if chapitre_id in CHAPTER_MAP:
-                    course_slug, chap_num = CHAPTER_MAP[chapitre_id]
-                    static_pdf_dir = os.path.join(FRONTEND_PDFS_DIR, course_slug, f'chapitre{chap_num}')
-                    if os.path.exists(static_pdf_dir):
-                        pdf_files = [os.path.join(static_pdf_dir, f) for f in os.listdir(static_pdf_dir) if f.endswith('.pdf')]
-                    static_video_dir = os.path.join(FRONTEND_VIDEOS_DIR, course_slug, f'chapitre{chap_num}')
-                    if os.path.exists(static_video_dir):
-                        video_files = [os.path.join(static_video_dir, f) for f in os.listdir(static_video_dir) if f.endswith(('.mp4', '.webm', '.mov', '.avi', '.mkv'))]
+            # Fusion : PDFs/vidéos statiques (frontend/public) + ressources uploadées (BDD)
+            static_pdfs, static_videos = _resolve_static_sources(chapitre_id)
+            pdf_files, video_files, temp_files = _merge_sources(static_pdfs, static_videos, ressources)
 
             # Générer les nouvelles questions
             questions = generate_quiz_from_chapter(
@@ -1597,6 +1687,7 @@ def soumettre_quiz(quiz_id):
         logger.exception("Erreur soumission quiz")
         return jsonify({"error": "Erreur serveur."}), 500
     finally:
+        _cleanup_temp_files(temp_files)
         conn.close()
 
 

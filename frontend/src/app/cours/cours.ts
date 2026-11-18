@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { timeout } from 'rxjs/operators';
 import { Auth } from '../core/auth';
+import { environment } from '../../environments/environements';
 
 interface Course {
   id: number;
@@ -27,7 +28,7 @@ export class CoursesComponent implements OnInit {
   private http = inject(HttpClient);
   private auth = inject(Auth);
 
-  private readonly API_URL = 'http://localhost:3000';
+  private readonly API_URL = environment.apiUrl;
 
   /** Nom de l'utilisateur connecté */
   userFullName = signal<string>('');

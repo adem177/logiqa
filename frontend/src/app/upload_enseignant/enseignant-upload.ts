@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { concatMap, last, from, tap } from 'rxjs';
 import { COURSES_DETAILS } from '../data/course-data'; // ajuste le chemin selon ton arborescence
 import { Auth } from '../core/auth';
+import { environment } from '../../environments/environements';
 
 type FileType = 'video' | 'pdf';
 
@@ -25,7 +26,7 @@ export class EnseignantUploadComponent {
   private http = inject(HttpClient);
   private auth = inject(Auth);
 
-  private readonly API_URL = 'http://localhost:3000';
+  private readonly API_URL = environment.apiUrl;
 
   // Limites alignées avec le backend (app.py)
   private static readonly VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi', 'mkv'];

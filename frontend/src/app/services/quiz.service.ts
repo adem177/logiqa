@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environements';
 
 export interface QuizOption {
   id: number;
@@ -51,7 +52,7 @@ export interface QuizAttemptResult {
 @Injectable({ providedIn: 'root' })
 export class QuizService {
   private http = inject(HttpClient);
-  private readonly API_URL = 'http://localhost:3000';
+  private readonly API_URL = environment.apiUrl;
 
   /**
    * Génère un quiz à partir des ressources d'un chapitre.

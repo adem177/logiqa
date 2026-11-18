@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
+import { environment } from '../../environments/environements';
 
 type Role = 'etudiant' | 'enseignant' | 'admin';
 
@@ -192,7 +193,7 @@ export class InscriptionComponent {
       role: this.role()
     };
 
-    this.http.post('http://localhost:3000/api/register', formData)
+    this.http.post(`${environment.apiUrl}/api/register`, formData)
       .subscribe({
         next: () => {
           this.successVisible.set(true);
